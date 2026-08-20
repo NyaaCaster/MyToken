@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { BaseModal } from "./BaseModal";
 
 export interface ProviderDocModalProps {
@@ -79,8 +80,9 @@ export function ProviderDocModal({
       ) : content === null ? (
         <p className="text-sm text-gray-400">加载中…</p>
       ) : (
-        <div className="prose prose-sm md:prose-base max-w-none dark:prose-invert prose-a:text-blue-600 prose-headings:tracking-tight dark:prose-a:text-blue-400 prose-pre:bg-gray-900 prose-pre:text-gray-100 dark:prose-pre:bg-black">
+        <div className="provider-doc prose prose-sm md:prose-base max-w-none dark:prose-invert prose-a:text-blue-600 prose-headings:tracking-tight dark:prose-a:text-blue-400">
           <Markdown
+            remarkPlugins={[remarkGfm]}
             components={{
               a: ({ href, children }) => (
                 <a href={href} target="_blank" rel="noopener noreferrer">

@@ -6,7 +6,7 @@
 
 ## 1. 获取 API Key
 
-1. 打开 <https://cloud.siliconflow.cn> 并注册 / 登录。
+1. 打开 [https://cloud.siliconflow.cn](https://cloud.siliconflow.cn/i/KJ0qgMuR) 并注册 / 登录。
    ⚠️ **需绑定手机号**才能创建 API Key。
 2. 登录后进入「控制台 / 工作台」。
 3. 进入 **API 密钥**页面（账户中心 → API 密钥 / API Keys）。

@@ -6,7 +6,7 @@ QinyAPI 基于 **new-api**（`https://love.qinyan.icu`）。它**不使用账号
 
 ## 1. 获取访问令牌（sk-xxx）
 
-1. 打开 <https://love.qinyan.icu> 并登录。
+1. 打开 [https://love.qinyan.icu](https://love.qinyan.icu/register?aff=btB0) 并登录。
 2. 进入 **个人设置 → 安全设置 → 系统访问令牌**。
 3. 点击「生成」，得到形如 `sk-xxxx` 的令牌。
 4. 复制并妥善保管（**之后不再完整显示**）。

@@ -6,7 +6,7 @@ OpenCode Go（`https://opencode.ai/go`）是一个长上下文编码订阅。MyT
 
 ## 1. 获取 API Key
 
-1. 打开 <https://opencode.ai/go> 。
+1. 打开 [https://opencode.ai/go](https://opencode.ai/go?ref=TZCVZ4X21V) 。
 2. 登录并购买 / 激活 **Go 订阅**计划（需一个编码登录账号，如 GitHub / Claude）。
 3. 在账户 / 订阅页面中找到你的 **API Key**（OpenCode Go Key，形如 `sk-xxxx`）。
 4. 复制并妥善保管。
