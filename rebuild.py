@@ -24,6 +24,11 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+# Windows 控制台默认 GBK，编码不了 ✔/中文会崩；统一 UTF-8 + 宽容替换
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parent
 WEB = "mytoken-web"
 SERVER = "mytoken-server"

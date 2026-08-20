@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # MyToken —— 多阶段构建，产出两个镜像 target：
 #   - build : 共享构建阶段（npm ci + 前端 build + 后端 build:server）
 #   - web   : nginx 静态托管 dist + /api 反代（rebuild.py 用 --target web）
@@ -10,8 +9,9 @@
 # ---------- Stage 1: 构建（前端 dist + 后端 server/dist） ----------
 FROM node:20-alpine AS build
 WORKDIR /app
-# 先只拷依赖清单，利用层缓存
+# 先只拷依赖清单，利用层缓存；npm 使用国内镜像（国际 registry 受网络限制）
 COPY package.json package-lock.json* ./
+RUN npm config set registry=https://registry.npmmirror.com
 RUN npm ci
 # 拷源码后构建
 COPY . .
@@ -23,6 +23,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 # 只装生产依赖（express），镜像尽量小
 COPY package.json package-lock.json* ./
+RUN npm config set registry=https://registry.npmmirror.com
 RUN npm ci --omit=dev
 # 后端编译产物
 COPY --from=build /app/server/dist ./server/dist
