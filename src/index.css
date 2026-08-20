@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+/* Tailwind v4 排版插件（react-markdown 渲染说明文档用） */
+@plugin "@tailwindcss/typography";
+
+/*
+ * MyToken 主题系统（Tailwind v4 CSS-first，无 tailwind.config.js）
+ * 深浅双主题：通过 .dark class 变体切换——根元素 <html class="dark"> 即进入暗色。
+ * 美术基调参考 NyaaChat（.ref/NyaaChat美术与md渲染调研.md）：
+ *   暗色基底 #0A0A0A/#111111、亮色近白 #FCFCFD；毛玻璃浮层；蓝主色/紫次色；
+ *   蓝紫渐变 Logo；柔和辉光；蓝色图形滚动条；圆角 rounded-xl/2xl。
+ *
+ * 字体说明：本机（研发环境）无外网，故不依赖 Google Fonts 在线加载，使用系统字体栈
+ * （Inter 若本地已装则优先，否则回退 system-ui）。后续如需在页面精确呈现三款字体
+ * （Inter/Space Grotesk/JetBrains Mono），应自托管 webfonts 到 public/webfonts 再启用。
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* 字体：Inter(正文) / Space Grotesk(标题) / JetBrains Mono(等宽)，均含系统栈回退 */
+  --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans SC",
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Inter", "PingFang SC", "Microsoft YaHei",
+    system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular",
+    "Cascadia Mono", "Consolas", "monospace", monospace;
+
+  /* 语义色板（Tailwind v4 会据此生成 bg-canvas / bg-surface 等工具类） */
+  --color-canvas: #fcfcfd; /* 亮色页面底色（近白） */
+  --color-surface: #ffffff; /* 亮色浮层/卡片 */
+  --color-panel: #111111; /* 暗色浮层 */
+  --color-card-dark: #1a1a1a; /* 暗色卡片/输入框 */
+
+  /* 自定义阴影（层次 + 蓝色光晕） */
+  --shadow-subtle: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-elevation-1: 0 4px 6px -1px rgb(0 0 0 / 0.05),
+    0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-elevation-2: 0 10px 15px -3px rgb(0 0 0 / 0.05),
+    0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --shadow-elevation-3: 0 20px 25px -5px rgb(0 0 0 / 0.1),
+    0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-glow: 0 0 15px 0 rgb(59 130 246 / 0.3); /* 蓝色光晕 */
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: #111827; /* gray-900 */
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 暗色基底（React 未挂载前也生效，避免白闪） */
+  .dark body {
+    background-color: #0a0a0a;
+    color: #f3f4f6; /* gray-100 */
+  }
+
+  /* 蓝色图形滚动条（全局统一，项目辨识度细节） */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(59 130 246 / 0.55) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: rgb(59 130 246 / 0.55);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(59 130 246 / 0.85);
+  }
+}
