@@ -1,15 +1,17 @@
 /**
  * src/components/ProviderModule.tsx
  *
- * P4 引入、P6 交互、本次重构：把每个供应商模块拆成三个区块：
- *   1. 供应商标题栏（ProviderCard）：左侧标题（可选外链）+ 「刷新/设置」图标按钮
- *      （仅启用时显示）+ 启用开关。
- *   2. 设置区块：访问令牌输入、用户 ID 输入（仅该供应商需要时显示）+ 认证按钮。
+ * 每个供应商 = 一张完整的圆角卡片（单一视觉对象），内部分三块：
+ *   1. 标题栏（卡片头部）：左侧标题（可选外链）+ 右侧成组 [刷新][设置][启用开关]。
+ *      - 「刷新/设置」图标按钮仅启用时显示，紧挨在启用开关左侧（右对齐成组）。
+ *   2. 设置子区块（内嵌）：访问令牌输入、用户 ID 输入（该供应商需要时）+ 认证按钮；
  *      - 未启用验证通过前：开启开关时显示。
- *      - 验证通过启用后：区块隐藏，改由标题栏「设置」图标按钮再次呼出。
- *   3. 额度数据区块：显示余额/窗口/统计；仅在启用且非「设置」态时显示。
+ *      - 验证通过启用后：隐藏，改由标题栏「设置」图标再次呼出。
+ *   3. 额度数据子区块（内嵌）：余额/窗口/统计；仅启用且非设置态时显示。
  *
- * 自动刷新：打开页面/定时刷新由 App 统一调度（见 App.tsx 的 refreshAll + 间隔）。
+ * 设计：卡片壳（rounded-2xl）由本组件统一提供；标题栏与内容子区块用内嵌
+ * （border-t 分隔 + 次级底色 rounded-xl）形成「基座的标题栏 vs 子区块」层级，
+ * 避免平级割裂。自动刷新（打开/定时）由 App 统一调度。
  */
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
@@ -34,6 +36,8 @@ export interface ProviderModuleProps {
   onRefresh: () => void;
 }
 
+/* ---------------- 展示工具 ---------------- */
+
 function formatAmount(n: number): string {
   return n.toLocaleString("zh-CN", { maximumFractionDigits: 4 });
 }
@@ -53,7 +57,7 @@ function formatResets(value: string): string {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-white/5">
+    <div className="rounded-lg bg-white/70 px-3 py-2 dark:bg-white/5">
       <div className="text-xs text-gray-400 dark:text-gray-500">{label}</div>
       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{value}</div>
     </div>
@@ -115,7 +119,8 @@ function ResultView({ data }: { data: ProviderResult }) {
   );
 }
 
-/** 单个供应商模块（三区块：标题栏 / 设置 / 额度数据）。 */
+/* ---------------- 供应商模块 ---------------- */
+
 export function ProviderModule({
   def,
   config,
@@ -127,22 +132,18 @@ export function ProviderModule({
 }: ProviderModuleProps) {
   const enabled = config.enabled;
 
-  // 未启用时：开关 ON 展开设置块（editing）；已启用后：点「设置」图标再呼出设置块。
-  const [editing, setEditing] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editing, setEditing] = useState(false); // 未启用时：开关 ON 展开设置子区块
+  const [settingsOpen, setSettingsOpen] = useState(false); // 已启用后：点「设置」图标再呼出
   const [pending, setPending] = useState(false);
   const [docOpen, setDocOpen] = useState(false);
 
-  // 设置区块：未启用时由 editing 控制；已启用后由 settingsOpen 控制。
   const showSettings = enabled ? settingsOpen : editing;
-  // 额度数据区块：仅启用且非设置态。
   const showData = enabled && !showSettings;
 
   const secretEmpty = def.fields
     .filter((f) => f.secret)
     .some((f) => !(config.credentials[f.key] ?? "").trim());
 
-  // 开关切换：开启需先鉴权；关闭即收起。
   const handleSwitch = async (next: boolean) => {
     if (pending) return;
     if (!next) {
@@ -152,8 +153,8 @@ export function ProviderModule({
       onDisable();
       return;
     }
-    setEditing(true); // 展开设置块
-    if (secretEmpty) return; // 密钥未填：不鉴权，提示填写
+    setEditing(true);
+    if (secretEmpty) return;
     setPending(true);
     const ok = await onEnable();
     setPending(false);
@@ -163,7 +164,6 @@ export function ProviderModule({
     }
   };
 
-  // 认证/保存（未启用=认证并启用；已启用（设置态）=保存并重新认证）。
   const handleEnable = async () => {
     if (pending) return;
     setPending(true);
@@ -172,7 +172,7 @@ export function ProviderModule({
     if (ok && !enabled) setEditing(false);
   };
 
-  // 标题栏操作按钮（refresh + settings），仅启用时显示；order：[刷新][设置]。
+  // 标题栏右侧成组按钮 [刷新][设置]，仅启用时显示，紧挨开关左侧。
   const actions = enabled ? (
     <>
       <button
@@ -187,7 +187,7 @@ export function ProviderModule({
       </button>
       <button
         type="button"
-        title="设置密钥"
+        title={showSettings ? "收起设置" : "设置密钥"}
         aria-label="设置"
         onClick={() => setSettingsOpen((v) => !v)}
         className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-blue-500/10 dark:hover:text-blue-400 ${
@@ -202,7 +202,8 @@ export function ProviderModule({
   ) : null;
 
   return (
-    <section>
+    <section className="overflow-hidden rounded-2xl border border-gray-200/50 bg-white/80 shadow-elevation-1 backdrop-blur-xl transition hover:shadow-elevation-2 dark:border-white/10 dark:bg-[#1A1A1A]/80">
+      {/* 区块 1：标题栏（卡片头部） */}
       <ProviderCard
         name={def.name}
         titleUrl={def.titleUrl}
@@ -212,7 +213,7 @@ export function ProviderModule({
         actions={actions}
       />
 
-      {/* 区块 2：设置（密钥输入 + 认证） */}
+      {/* 区块 2：设置子区块（内嵌） */}
       <AnimatePresence initial={false}>
         {showSettings && (
           <motion.div
@@ -221,84 +222,85 @@ export function ProviderModule({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="mt-2 overflow-hidden"
+            className="overflow-hidden"
           >
-            <div className="rounded-2xl border border-gray-200/50 bg-white/60 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
-              <div className="space-y-3">
-                {def.fields.map((f) => (
-                  <label key={f.key} className="block">
-                    <span className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {f.label}
-                      {f.secret && (
-                        <button
-                          type="button"
-                          title="查看密钥获取说明"
-                          aria-label={`查看${f.label}获取说明`}
-                          onClick={() => setDocOpen(true)}
-                          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-gray-400 transition hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400"
-                        >
-                          <Info className="h-3.5 w-3.5" aria-hidden />
-                        </button>
+            <div className="border-t border-gray-100 px-4 pb-4 pt-3 dark:border-white/5">
+              <div className="rounded-xl bg-gray-50/70 p-4 dark:bg-white/[0.04]">
+                <div className="space-y-3">
+                  {def.fields.map((f) => (
+                    <label key={f.key} className="block">
+                      <span className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {f.label}
+                        {f.secret && (
+                          <button
+                            type="button"
+                            title="查看密钥获取说明"
+                            aria-label={`查看${f.label}获取说明`}
+                            onClick={() => setDocOpen(true)}
+                            className="inline-flex h-4 w-4 items-center justify-center rounded-full text-gray-400 transition hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400"
+                          >
+                            <Info className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                        )}
+                      </span>
+                      {f.secret ? (
+                        <SecretInput
+                          id={`${def.id}-${f.key}`}
+                          value={config.credentials[f.key] ?? ""}
+                          placeholder={f.placeholder}
+                          onChange={(v) => onFieldChange(f.key, v)}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={config.credentials[f.key] ?? ""}
+                          placeholder={f.placeholder}
+                          onChange={(e) => onFieldChange(f.key, e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-white/10 dark:bg-[#111] dark:text-gray-100"
+                        />
                       )}
-                    </span>
-                    {f.secret ? (
-                      <SecretInput
-                        id={`${def.id}-${f.key}`}
-                        value={config.credentials[f.key] ?? ""}
-                        placeholder={f.placeholder}
-                        onChange={(v) => onFieldChange(f.key, v)}
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={config.credentials[f.key] ?? ""}
-                        placeholder={f.placeholder}
-                        onChange={(e) => onFieldChange(f.key, e.target.value)}
-                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-white/10 dark:bg-[#111] dark:text-gray-100"
-                      />
-                    )}
-                  </label>
-                ))}
-              </div>
+                    </label>
+                  ))}
+                </div>
 
-              {/* 认证错误（在设置块内也显示，便于重认证失败时看到） */}
-              {state.error && (
-                <p className="mt-3 flex items-center gap-1.5 text-sm text-red-500">
-                  <span aria-hidden>⚠</span> {state.error}
-                </p>
-              )}
+                {state.error && (
+                  <p className="mt-3 flex items-center gap-1.5 text-sm text-red-500">
+                    <span aria-hidden>⚠</span> {state.error}
+                  </p>
+                )}
 
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleEnable}
-                  disabled={pending || secretEmpty}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 px-3 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <ShieldCheck className="h-4 w-4" aria-hidden />
-                  {pending ? "认证中…" : enabled ? "保存并重新认证" : "认证并启用"}
-                </button>
-                {enabled && (
+                <div className="mt-3 flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setSettingsOpen(false)}
-                    className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm text-gray-500 transition hover:bg-gray-500/10 dark:text-gray-400"
+                    onClick={handleEnable}
+                    disabled={pending || secretEmpty}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 px-3 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    完成
+                    <ShieldCheck className="h-4 w-4" aria-hidden />
+                    {pending ? "认证中…" : enabled ? "保存并重新认证" : "认证并启用"}
                   </button>
-                )}
-                {!enabled && secretEmpty && (
-                  <span className="text-xs text-amber-600 dark:text-amber-400">
-                    请填写密钥后点击认证
-                  </span>
-                )}
+                  {enabled && (
+                    <button
+                      type="button"
+                      onClick={() => setSettingsOpen(false)}
+                      className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm text-gray-500 transition hover:bg-gray-500/10 dark:text-gray-400"
+                    >
+                      完成
+                    </button>
+                  )}
+                  {!enabled && secretEmpty && (
+                    <span className="text-xs text-amber-600 dark:text-amber-400">
+                      请填写密钥后点击认证
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 区块 3：额度数据 */}
+      {/* 区块 3：额度数据子区块（内嵌） */}
       <AnimatePresence initial={false}>
         {showData && (
           <motion.div
@@ -307,25 +309,27 @@ export function ProviderModule({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="mt-2 overflow-hidden"
+            className="overflow-hidden"
           >
-            <div className="rounded-2xl border border-gray-200/50 bg-white/60 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
-              {state.error ? (
-                <p className="flex items-center gap-1.5 text-sm text-red-500">
-                  <span aria-hidden>⚠</span> {state.error}
-                </p>
-              ) : state.loading ? (
-                <p className="text-sm text-gray-400">查询中…</p>
-              ) : state.data ? (
-                <ResultView data={state.data} />
-              ) : (
-                <p className="text-sm text-gray-400">暂无数据 · 点击刷新获取</p>
-              )}
-              {state.lastUpdated && (
-                <p className="mt-2 text-xs text-gray-400">
-                  更新于 {new Date(state.lastUpdated).toLocaleTimeString("zh-CN")}
-                </p>
-              )}
+            <div className="border-t border-gray-100 px-4 pb-4 pt-3 dark:border-white/5">
+              <div className="rounded-xl bg-gray-50/70 p-4 dark:bg-white/[0.04]">
+                {state.error ? (
+                  <p className="flex items-center gap-1.5 text-sm text-red-500">
+                    <span aria-hidden>⚠</span> {state.error}
+                  </p>
+                ) : state.loading ? (
+                  <p className="text-sm text-gray-400">查询中…</p>
+                ) : state.data ? (
+                  <ResultView data={state.data} />
+                ) : (
+                  <p className="text-sm text-gray-400">暂无数据 · 点击刷新获取</p>
+                )}
+                {state.lastUpdated && (
+                  <p className="mt-2 text-xs text-gray-400">
+                    更新于 {new Date(state.lastUpdated).toLocaleTimeString("zh-CN")}
+                  </p>
+                )}
+              </div>
             </div>
           </motion.div>
         )}

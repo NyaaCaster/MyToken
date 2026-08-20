@@ -1,11 +1,12 @@
 /**
  * src/components/ProviderCard.tsx
  *
- * P3 引入、P6 完善：供应商模块的「标题 + 启停开关」外壳（presentational）。
- * - 形态固定：左侧标题（可选外链，ExternalLink 新开标签）+ 右侧启停开关。
- * - `pending` 表示正在鉴权（开关禁用并显示加载态，鉴权成功才真正翻转）。
- * - `children` 由父级（ProviderModule）根据展开态注入密钥输入与数据区；
- *   无 children 且未展开时，卡片即「只显示标题+开关」（模块收起）。
+ * 供应商模块卡片内的「标题栏行」（presentational）：
+ *  - 左侧标题（可选外链 ExternalLink）。
+ *  - 右侧成组：操作按钮（刷新/设置，由父级 actions 传入）+ 启停开关。
+ *    「刷新/设置」图标按钮紧挨在启用开关左侧（右对齐成组），不放中间。
+ *  - pending 表示正在鉴权（开关禁用并显示加载态）。
+ *  - 不渲染自身卡片边框——卡片壳由 ProviderModule 统一提供（模块=一整张圆角卡片）。
  */
 import type { ReactNode } from "react";
 import { ExternalLink, Loader2 } from "lucide-react";
@@ -21,10 +22,8 @@ export interface ProviderCardProps {
   pending?: boolean;
   /** 切换回调（父级决定是否先鉴权） */
   onToggle: (enabled: boolean) => void;
-  /** 标题栏右侧、启用开关之前的操作按钮（如刷新/设置图标），可选 */
+  /** 启用开关左侧的操作按钮（刷新/设置图标），可选 */
   actions?: ReactNode;
-  /** 展开态内容（密钥输入 / 数据区） */
-  children?: ReactNode;
 }
 
 export function ProviderCard({
@@ -34,7 +33,6 @@ export function ProviderCard({
   pending = false,
   onToggle,
   actions,
-  children,
 }: ProviderCardProps) {
   const titleContent = titleUrl ? (
     <a
@@ -56,14 +54,12 @@ export function ProviderCard({
   );
 
   return (
-    <div className="rounded-2xl border border-gray-200/50 bg-white/80 p-4 shadow-elevation-1 backdrop-blur-xl transition hover:shadow-elevation-2 dark:border-white/10 dark:bg-[#1A1A1A]/80">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center">{titleContent}</div>
+    <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <div className="flex min-w-0 items-center">{titleContent}</div>
 
-        {/* 启用开关左侧的操作按钮（refresh/settings，由父级按需传入） */}
-        {actions && <div className="flex items-center gap-1">{actions}</div>}
-
-        {/* 启停开关（鉴权中显示加载态并禁用） */}
+      {/* 右侧成组：操作按钮（刷新/设置，紧挨开关左侧） + 启停开关 */}
+      <div className="flex flex-none items-center gap-1.5">
+        {actions}
         <button
           type="button"
           role="switch"
@@ -88,8 +84,6 @@ export function ProviderCard({
           )}
         </button>
       </div>
-
-      {children}
     </div>
   );
 }
