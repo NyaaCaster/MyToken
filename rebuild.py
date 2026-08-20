@@ -156,9 +156,23 @@ def main() -> int:
         print("错误：.env 缺少 PRIVATE_DOCKER_REGISTRY_HOST")
         return 1
 
+    # 可选参数：--target web|server（默认全量 web+server，与历史行为一致）
+    target_filter = None
+    usable = [a for a in sys.argv[1:] if not a.startswith("-")]
+    if "web" in usable or "server" in usable:
+        target_filter = usable[0]
+        if target_filter not in ("web", "server"):
+            print(f"错误：未知 target '{target_filter}'（仅支持 web / server）")
+            return 1
+        print(f"仅重建 target: {target_filter}")
+
     sha = git_sha()
     print(f"构建 sha: {sha}")
     targets = {WEB: "web", SERVER: "server"}
+    if target_filter == "web":
+        targets = {WEB: "web"}
+    elif target_filter == "server":
+        targets = {SERVER: "server"}
     keep_tags = {"latest", sha}
 
     for repo, target in targets.items():
