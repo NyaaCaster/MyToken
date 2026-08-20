@@ -35,6 +35,29 @@ export interface ProviderDef {
   fields: AuthField[];
   /** 鉴权说明 md（public/docs/<id>.md，P6 浮窗懒加载）。 */
   docPath: string;
+  /** 价格峰谷配置（可选，仅支持峰谷计价的供应商提供，如 DeepSeek）。 */
+  peak?: ProviderPeak;
+}
+
+/** 一档价格（美元 / 1M tokens，DeepSeek 官方结构）。 */
+export interface ProviderPriceTier {
+  cacheHit: number;
+  cacheMiss: number;
+  output: number;
+}
+
+/** 峰谷窗口（UTC 小时，半开区间 [start, end)）。 */
+export interface ProviderPeakWindow {
+  start: number;
+  end: number;
+}
+
+/** 价格峰谷：峰时段窗口 + 各模型的空闲/峰两档价。 */
+export interface ProviderPeak {
+  windows: ProviderPeakWindow[];
+  /** 时区说明，如 "UTC"。 */
+  tz: string;
+  models: Record<string, { offPeak: ProviderPriceTier; peak: ProviderPriceTier }>;
 }
 
 /** 归一化的余额展示。 */

@@ -19,6 +19,7 @@ import { Info, RefreshCw, Settings, ShieldCheck } from "lucide-react";
 import { ProviderCard } from "./ProviderCard";
 import { SecretInput } from "./SecretInput";
 import { ProviderDocModal } from "./ProviderDocModal";
+import { PeakValleyView } from "./PeakValleyView";
 import type { ProviderDef, ProviderResult } from "../types/provider";
 import type { ProviderBalanceState } from "../hooks/useBalances";
 import type { ProviderConfig } from "../hooks/useProvidersConfig";
@@ -323,6 +324,12 @@ export function ProviderModule({
                   <ResultView data={state.data} />
                 ) : (
                   <p className="text-sm text-gray-400">暂无数据 · 点击刷新获取</p>
+                )}
+                {/* 价格峰谷（DeepSeek 等支持峰谷计价的供应商） */}
+                {def.peak && (
+                  <div className="mt-4 border-t border-gray-100 pt-3 dark:border-white/5">
+                    <PeakValleyView peak={def.peak} />
+                  </div>
                 )}
                 {state.lastUpdated && (
                   <p className="mt-2 text-xs text-gray-400">
