@@ -19,6 +19,8 @@ services:
     restart: unless-stopped
     depends_on:
       - server
+    environment:
+      - TZ=Asia/Shanghai
 
   server:
     image: ${PRIVATE_DOCKER_REGISTRY_HOST:?err}/mytoken-server:latest
@@ -30,3 +32,4 @@ services:
     environment:
       - PORT=8788
       - HOST=0.0.0.0
+      - TZ=Asia/Shanghai

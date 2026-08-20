@@ -20,6 +20,8 @@ services:
     restart: unless-stopped
     depends_on:
       - server
+    environment:
+      - TZ=Asia/Shanghai
 
   server:
     build:
@@ -34,3 +36,4 @@ services:
     environment:
       - PORT=8788
       - HOST=0.0.0.0
+      - TZ=Asia/Shanghai
