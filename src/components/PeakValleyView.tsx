@@ -3,7 +3,7 @@
  *
  * 价格峰谷展示（参考费用统计插件的「经典分段与胶囊芯片」峰谷）：
  *  - 24 小时「胶囊分段条」：峰时段高亮蓝、空闲时段灰，当前小时带高亮环。
- *  - 峰时段窗口文字说明（UTC）+ 当前处于峰/空闲。
+ *  - 峰时段窗口按**上海时间（UTC+8）**展示与判定（官方以 UTC 定义，已换算）。
  *  - 各模型「空闲 / 峰」两档价（$ / 1M tokens：缓存命中 / 未命中 / 输出）。
  * 数据静态来自 registry 的 provider.peak（DeepSeek 官方定价）。
  */
@@ -22,9 +22,17 @@ function fmtPx(n: number): string {
   return `$${n.toLocaleString("zh-CN", { maximumFractionDigits: 4 })}`;
 }
 
+/** 展示时区：上海 = UTC+8（中国区部署，无夏令时）。 */
+const LOCAL_OFFSET_HOURS = 8;
+
 export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
-  const nowHour = new Date().getUTCHours();
-  const inPeak = isPeakHour(nowHour, peak.windows);
+  // 官方峰时段以 UTC 定义；换算为上海时间用于展示与「当前」判定。
+  const localWindows: ProviderPeak["windows"] = peak.windows.map((w) => ({
+    start: (w.start + LOCAL_OFFSET_HOURS) % 24,
+    end: (w.end + LOCAL_OFFSET_HOURS) % 24,
+  }));
+  const nowHour = (new Date().getUTCHours() + LOCAL_OFFSET_HOURS) % 24;
+  const inPeak = isPeakHour(nowHour, localWindows);
   const modelIds = Object.keys(peak.models);
 
   return (
@@ -32,7 +40,7 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
       {/* 标题 + 当前相位 */}
       <div className="flex items-center justify-between text-xs">
         <span className="font-medium text-gray-500 dark:text-gray-400">
-          价格峰谷（{peak.tz || "UTC"} 时区）
+          价格峰谷（上海时间 UTC+8）
         </span>
         <span
           className={
@@ -48,7 +56,7 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
       {/* 24 小时胶囊分段条 */}
       <div className="flex gap-[3px]">
         {Array.from({ length: 24 }, (_, h) => {
-          const isPeak = isPeakHour(h, peak.windows);
+          const isPeak = isPeakHour(h, localWindows);
           return (
             <div
               key={h}
@@ -63,9 +71,9 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
         })}
       </div>
 
-      {/* 峰时段说明 */}
+      {/* 峰时段说明（上海时间） */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-        {peak.windows.map((w, i) => (
+        {localWindows.map((w, i) => (
           <span key={i} className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-blue-500" />
             峰 {String(w.start).padStart(2, "0")}:00–{String(w.end).padStart(2, "0")}:00
