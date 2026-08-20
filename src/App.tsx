@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useTheme } from "./hooks/useTheme";
 import { Header } from "./components/Header";
 import { ProviderModule } from "./components/ProviderModule";
@@ -6,10 +6,31 @@ import { useProvidersConfig } from "./hooks/useProvidersConfig";
 import { useBalances } from "./hooks/useBalances";
 import { providers } from "./providers/registry";
 
+/** 自动刷新间隔：固定 5 分钟（参考费用统计插件的刷新机制，按需调整）。 */
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
 export default function App() {
   const { mode, cycle } = useTheme();
   const { getConfig, setField, setEnabled } = useProvidersConfig();
   const { getState, refresh } = useBalances();
+
+  // 刷新所有已启用供应商（供「打开/定时」自动刷新）。
+  const refreshAll = useCallback(() => {
+    for (const def of providers) {
+      const cfg = getConfig(def.id);
+      if (cfg.enabled) {
+        const creds = cfg.credentials ?? {};
+        void refresh(def.id, creds);
+      }
+    }
+  }, [getConfig, refresh]);
+
+  // 打开页面立即刷新所有已启用供应商；此后按固定间隔自动刷新。
+  useEffect(() => {
+    refreshAll();
+    const timer = setInterval(refreshAll, AUTO_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [refreshAll]);
 
   // 尝试启用：先鉴权（refresh），成功才真正置 enabled —— 对应「开关鉴权联动」。
   const enableProvider = useCallback(

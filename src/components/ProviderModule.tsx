@@ -1,20 +1,19 @@
 /**
  * src/components/ProviderModule.tsx
  *
- * P4 引入、P6 完善交互：把 ProviderCard 外壳 + 密钥输入 + 鉴权说明浮窗 + 查询归一
- * 粘成一个「开启需先鉴权、关闭即收起」的供应商模块。
+ * P4 引入、P6 交互、本次重构：把每个供应商模块拆成三个区块：
+ *   1. 供应商标题栏（ProviderCard）：左侧标题（可选外链）+ 「刷新/设置」图标按钮
+ *      （仅启用时显示）+ 启用开关。
+ *   2. 设置区块：访问令牌输入、用户 ID 输入（仅该供应商需要时显示）+ 认证按钮。
+ *      - 未启用验证通过前：开启开关时显示。
+ *      - 验证通过启用后：区块隐藏，改由标题栏「设置」图标按钮再次呼出。
+ *   3. 额度数据区块：显示余额/窗口/统计；仅在启用且非「设置」态时显示。
  *
- * 交互模型：
- * - 开关 OFF：模块收起（仅 ProviderCard 的「标题 + 开关」，见 ProviderCard children 空）。
- * - 点开关 ON：展开编辑器 → 若密钥已填则自动发起鉴权（经 parent.onEnable，
- *   内部走 /api/providers/:id/query）；成功才真正置 enabled 并展开数据；
- *   失败则开关回弹、停留在编辑态并显示红色中文错误。
- * - 密钥未填：停在编辑态提示「请填写密钥后点击认证」。
- * - 每个 secret 字段：隐藏输入 + 眼睛切换 + 复制 + ?（打开鉴权说明 md 浮窗）。
+ * 自动刷新：打开页面/定时刷新由 App 统一调度（见 App.tsx 的 refreshAll + 间隔）。
  */
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Info, RefreshCw, ShieldCheck } from "lucide-react";
+import { Info, RefreshCw, Settings, ShieldCheck } from "lucide-react";
 import { ProviderCard } from "./ProviderCard";
 import { SecretInput } from "./SecretInput";
 import { ProviderDocModal } from "./ProviderDocModal";
@@ -27,7 +26,7 @@ export interface ProviderModuleProps {
   config: ProviderConfig;
   state: ProviderBalanceState;
   onFieldChange: (key: string, value: string) => void;
-  /** 尝试启用：内部先鉴权，成功才真正启用；resolve 是否成功 */
+  /** 尝试启用/重新认证：内部先鉴权，成功才置 enabled；resolve 是否成功 */
   onEnable: () => Promise<boolean>;
   /** 停用（关闭开关） */
   onDisable: () => void;
@@ -116,7 +115,7 @@ function ResultView({ data }: { data: ProviderResult }) {
   );
 }
 
-/** 单个供应商模块（P6 交互版）。 */
+/** 单个供应商模块（三区块：标题栏 / 设置 / 额度数据）。 */
 export function ProviderModule({
   def,
   config,
@@ -126,55 +125,98 @@ export function ProviderModule({
   onDisable,
   onRefresh,
 }: ProviderModuleProps) {
-  const [editing, setEditing] = useState(false); // 编辑器展开（未启用时也可展开填密钥）
-  const [pending, setPending] = useState(false); // 鉴权进行中
+  const enabled = config.enabled;
+
+  // 未启用时：开关 ON 展开设置块（editing）；已启用后：点「设置」图标再呼出设置块。
+  const [editing, setEditing] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pending, setPending] = useState(false);
   const [docOpen, setDocOpen] = useState(false);
 
-  const expanded = config.enabled || editing;
+  // 设置区块：未启用时由 editing 控制；已启用后由 settingsOpen 控制。
+  const showSettings = enabled ? settingsOpen : editing;
+  // 额度数据区块：仅启用且非设置态。
+  const showData = enabled && !showSettings;
+
   const secretEmpty = def.fields
     .filter((f) => f.secret)
     .some((f) => !(config.credentials[f.key] ?? "").trim());
 
-  // 开关切换：开启需先鉴权；关闭即收起
+  // 开关切换：开启需先鉴权；关闭即收起。
   const handleSwitch = async (next: boolean) => {
     if (pending) return;
     if (!next) {
       setPending(false);
       setEditing(false);
+      setSettingsOpen(false);
       onDisable();
       return;
     }
-    setEditing(true); // 展开编辑器
-    if (secretEmpty) return; // 密钥未填：不鉴权，提示用户填写
+    setEditing(true); // 展开设置块
+    if (secretEmpty) return; // 密钥未填：不鉴权，提示填写
     setPending(true);
-    await onEnable();
+    const ok = await onEnable();
     setPending(false);
-    // 成功 -> parent 已 setEnabled(true)（真开启+展开数据）；失败 -> 开关回弹，停编辑态显示错误
+    if (ok) {
+      setEditing(false);
+      setSettingsOpen(false);
+    }
   };
 
-  // 编辑态「认证并启用」按钮
+  // 认证/保存（未启用=认证并启用；已启用（设置态）=保存并重新认证）。
   const handleEnable = async () => {
     if (pending) return;
     setPending(true);
-    await onEnable();
+    const ok = await onEnable();
     setPending(false);
+    if (ok && !enabled) setEditing(false);
   };
+
+  // 标题栏操作按钮（refresh + settings），仅启用时显示；order：[刷新][设置]。
+  const actions = enabled ? (
+    <>
+      <button
+        type="button"
+        title="刷新额度"
+        aria-label="刷新"
+        onClick={onRefresh}
+        disabled={pending || state.loading}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition hover:bg-blue-500/10 hover:text-blue-600 disabled:opacity-50 dark:text-gray-400 dark:hover:text-blue-400"
+      >
+        <RefreshCw className={`h-4 w-4 ${state.loading ? "animate-spin" : ""}`} aria-hidden />
+      </button>
+      <button
+        type="button"
+        title="设置密钥"
+        aria-label="设置"
+        onClick={() => setSettingsOpen((v) => !v)}
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-blue-500/10 dark:hover:text-blue-400 ${
+          showSettings
+            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+            : "text-gray-500 dark:text-gray-400"
+        }`}
+      >
+        <Settings className="h-4 w-4" aria-hidden />
+      </button>
+    </>
+  ) : null;
 
   return (
     <section>
       <ProviderCard
         name={def.name}
         titleUrl={def.titleUrl}
-        enabled={config.enabled}
+        enabled={enabled}
         pending={pending}
         onToggle={handleSwitch}
+        actions={actions}
       />
 
-      {/* 展开体：密钥输入 + （启用后）数据；关闭即收起 */}
+      {/* 区块 2：设置（密钥输入 + 认证） */}
       <AnimatePresence initial={false}>
-        {expanded && (
+        {showSettings && (
           <motion.div
-            key="provider-body"
+            key="settings"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
@@ -182,7 +224,6 @@ export function ProviderModule({
             className="mt-2 overflow-hidden"
           >
             <div className="rounded-2xl border border-gray-200/50 bg-white/60 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
-              {/* 密钥 / 鉴权字段输入 */}
               <div className="space-y-3">
                 {def.fields.map((f) => (
                   <label key={f.key} className="block">
@@ -220,62 +261,71 @@ export function ProviderModule({
                 ))}
               </div>
 
-              {/* 操作行：未启用 -> 认证并启用；已启用 -> 刷新 */}
+              {/* 认证错误（在设置块内也显示，便于重认证失败时看到） */}
+              {state.error && (
+                <p className="mt-3 flex items-center gap-1.5 text-sm text-red-500">
+                  <span aria-hidden>⚠</span> {state.error}
+                </p>
+              )}
+
               <div className="mt-3 flex items-center gap-2">
-                {config.enabled ? (
+                <button
+                  type="button"
+                  onClick={handleEnable}
+                  disabled={pending || secretEmpty}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 px-3 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ShieldCheck className="h-4 w-4" aria-hidden />
+                  {pending ? "认证中…" : enabled ? "保存并重新认证" : "认证并启用"}
+                </button>
+                {enabled && (
                   <button
                     type="button"
-                    onClick={onRefresh}
-                    disabled={pending || state.loading}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 px-3 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-60"
+                    onClick={() => setSettingsOpen(false)}
+                    className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm text-gray-500 transition hover:bg-gray-500/10 dark:text-gray-400"
                   >
-                    <RefreshCw
-                      className={`h-4 w-4 ${state.loading ? "animate-spin" : ""}`}
-                      aria-hidden
-                    />
-                    刷新
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleEnable}
-                    disabled={pending || secretEmpty}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-500 px-3 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ShieldCheck className="h-4 w-4" aria-hidden />
-                    {pending ? "认证中…" : "认证并启用"}
+                    完成
                   </button>
                 )}
-                {!config.enabled && secretEmpty && (
+                {!enabled && secretEmpty && (
                   <span className="text-xs text-amber-600 dark:text-amber-400">
                     请填写密钥后点击认证
                   </span>
                 )}
-                {config.enabled && (
-                  <span className="text-xs text-gray-400">已启用 · 可手动刷新</span>
-                )}
               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-              {/* 错误 / 结果 */}
-              <div className="mt-3">
-                {state.error && (
-                  <p className="flex items-center gap-1.5 text-sm text-red-500">
-                    <span aria-hidden>⚠</span> {state.error}
-                  </p>
-                )}
-                {state.loading && !state.error && (
-                  <p className="text-sm text-gray-400">查询中…</p>
-                )}
-                {!state.loading && !state.error && state.data && (
-                  <ResultView data={state.data} />
-                )}
-                {state.lastUpdated && (
-                  <p className="mt-2 text-xs text-gray-400">
-                    更新于{" "}
-                    {new Date(state.lastUpdated).toLocaleTimeString("zh-CN")}
-                  </p>
-                )}
-              </div>
+      {/* 区块 3：额度数据 */}
+      <AnimatePresence initial={false}>
+        {showData && (
+          <motion.div
+            key="data"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="mt-2 overflow-hidden"
+          >
+            <div className="rounded-2xl border border-gray-200/50 bg-white/60 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+              {state.error ? (
+                <p className="flex items-center gap-1.5 text-sm text-red-500">
+                  <span aria-hidden>⚠</span> {state.error}
+                </p>
+              ) : state.loading ? (
+                <p className="text-sm text-gray-400">查询中…</p>
+              ) : state.data ? (
+                <ResultView data={state.data} />
+              ) : (
+                <p className="text-sm text-gray-400">暂无数据 · 点击刷新获取</p>
+              )}
+              {state.lastUpdated && (
+                <p className="mt-2 text-xs text-gray-400">
+                  更新于 {new Date(state.lastUpdated).toLocaleTimeString("zh-CN")}
+                </p>
+              )}
             </div>
           </motion.div>
         )}

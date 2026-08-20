@@ -21,6 +21,8 @@ export interface ProviderCardProps {
   pending?: boolean;
   /** 切换回调（父级决定是否先鉴权） */
   onToggle: (enabled: boolean) => void;
+  /** 标题栏右侧、启用开关之前的操作按钮（如刷新/设置图标），可选 */
+  actions?: ReactNode;
   /** 展开态内容（密钥输入 / 数据区） */
   children?: ReactNode;
 }
@@ -31,6 +33,7 @@ export function ProviderCard({
   enabled,
   pending = false,
   onToggle,
+  actions,
   children,
 }: ProviderCardProps) {
   const titleContent = titleUrl ? (
@@ -56,6 +59,9 @@ export function ProviderCard({
     <div className="rounded-2xl border border-gray-200/50 bg-white/80 p-4 shadow-elevation-1 backdrop-blur-xl transition hover:shadow-elevation-2 dark:border-white/10 dark:bg-[#1A1A1A]/80">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center">{titleContent}</div>
+
+        {/* 启用开关左侧的操作按钮（refresh/settings，由父级按需传入） */}
+        {actions && <div className="flex items-center gap-1">{actions}</div>}
 
         {/* 启停开关（鉴权中显示加载态并禁用） */}
         <button
