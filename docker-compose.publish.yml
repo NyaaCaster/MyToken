@@ -9,7 +9,13 @@ services:
     image: ${PRIVATE_DOCKER_REGISTRY_HOST:?err}/mytoken-web:latest
     container_name: mytoken-web
     ports:
-      - "${WEB_PORT:-5200}:80"
+      # HTTPS 主入口：宿主 WEB_PORT（5200）→ 容器 443
+      - "${WEB_PORT:-5200}:443"
+      # HTTP 跳转入口：宿主 HTTP_REDIRECT_PORT（5209）→ 容器 80（301→https）
+      - "${HTTP_REDIRECT_PORT:-5209}:80"
+    volumes:
+      # 证书(LE SAN) 只读挂载进 nginx；由宿主机 acme.sh 续期后热加载
+      - "${CERT_DIR:-./certs}:/etc/nginx/ssl:ro"
     restart: unless-stopped
     depends_on:
       - server
