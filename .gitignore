@@ -21,3 +21,6 @@ Thumbs.db
 # Editor
 .idea/
 .vscode/
+
+# Python
+__pycache__/
