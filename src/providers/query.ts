@@ -54,24 +54,35 @@ async function proxyFetch(
     signal: opts.signal,
   });
 
-  let body: { ok?: boolean; data?: unknown; code?: number; message?: string } | null = null;
+  let ok = false;
+  let data: unknown = null;
+  let code: number | null = null;
+  let message: string | null = null;
   try {
-    body = (await resp.json()) as typeof body;
+    const parsed = (await resp.json()) as {
+      ok?: unknown;
+      data?: unknown;
+      code?: unknown;
+      message?: unknown;
+    } | null;
+    if (parsed && typeof parsed === "object") {
+      ok = parsed.ok === true;
+      data = parsed.data ?? null;
+      if (typeof parsed.code === "number") code = parsed.code;
+      if (typeof parsed.message === "string") message = parsed.message;
+    }
   } catch {
     /* 非 JSON 响应 */
   }
 
-  if (!resp.ok || !body?.ok) {
-    const code = typeof body?.code === "number" ? body.code : resp.status;
-    const message =
-      typeof body?.message === "string" && body.message
-        ? body.message
-        : resp.ok
-          ? "查询失败：上游返回异常"
-          : `查询失败（HTTP ${resp.status}）`;
-    throw new ProviderError(message, code);
+  if (!resp.ok || !ok) {
+    const c = code ?? resp.status;
+    const m =
+      message ||
+      (resp.ok ? "查询失败：上游返回异常" : `查询失败（HTTP ${resp.status}）`);
+    throw new ProviderError(m, c);
   }
-  return (body.data ?? {}) as Record<string, unknown>;
+  return (data ?? {}) as Record<string, unknown>;
 }
 
 /** 宽容取数值：字符串解析为浮点，其余按 Number 转换，非有限数归 0。 */
@@ -187,7 +198,9 @@ async function queryQinyapi(
       total = toNum((log.data as Record<string, unknown> | undefined)?.total);
       const items = ((log.data as Record<string, unknown> | undefined)?.items ?? []) as unknown[];
       if (items.length === 0) break;
-      spent += items.reduce((s, it) => s + toNum((it as Record<string, unknown>)?.quota), 0);
+      for (const it of items) {
+        spent += toNum((it as Record<string, unknown> | null)?.quota);
+      }
       collected += items.length;
       page += 1;
     }
