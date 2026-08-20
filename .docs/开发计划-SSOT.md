@@ -52,13 +52,13 @@
 
 | P | 内容 | 状态 | 依赖 |
 |---|------|------|------|
-| P1 | 项目工程化基础（NyaaFrame 模板初始化 + git 首次提交推送） | ⬜ | — |
-| P2 | 后端轻量代理层（Express，供应商查询转发 + CORS/UA/Key 白名单） | ⬜ | P1 |
-| P3 | 前端骨架与主题（左上 Logo+名称跳仓库、右上图标区、主题浅/暗/跟随系统、毛玻璃美术基调、瀑布布局容器） | ⬜ | P1 |
-| P4 | 供应商适配器层 + 四家核心模块（QinyAPI / DeepSeek / OpenCode-Go / 硅基流动） | ⬜ | P2,P3 |
-| P5 | Coding Plan 模块（Anthropic / Z.ai / MiniMax / Kimi / OpenRouter，各自独立开关） | ⬜ | P4 |
-| P6 | 前端交互完善（密钥隐藏显示、? 浮窗渲染 md 说明、开关鉴权联动、模块收起/展开） | ⬜ | P3 |
-| P7 | 端到端验证 + Docker + macmini 部署 + README/SSOT 收尾 | ⬜ | P4,P5,P6 |
+| P1 | 项目工程化基础（NyaaFrame 模板初始化 + git 首次提交推送） | ✅ | — |
+| P2 | 后端轻量代理层（Express，供应商查询转发 + CORS/UA/Key 白名单） | ✅ | P1 |
+| P3 | 前端骨架与主题（左上 Logo+名称跳仓库、右上图标区、主题浅/暗/跟随系统、毛玻璃美术基调、瀑布布局容器） | ✅ | P1 |
+| P4 | 供应商适配器层 + 四家核心模块（QinyAPI / DeepSeek / OpenCode-Go / 硅基流动） | ✅ | P2,P3 |
+| P5 | Coding Plan 模块（Anthropic / Z.ai / MiniMax / Kimi / OpenRouter，各自独立开关） | ✅ | P4 |
+| P6 | 前端交互完善（密钥隐藏显示、? 浮窗渲染 md 说明、开关鉴权联动、模块收起/展开） | ✅ | P3 |
+| P7 | 端到端验证 + Docker + macmini 部署 + README/SSOT 收尾 | 🟡（代码/产物完成；联网构建与 macmini 部署待续） | P4,P5,P6 |
 
 ---
 
