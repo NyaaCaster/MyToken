@@ -1,0 +1,12 @@
+{
+  "name": "MyToken",
+  "description": "MyToken —— 多 API 供应商个人额度/余额聚合查询面板（React + TypeScript + Vite + Tailwind + Express 代理层）",
+  "author": "NyaaCaster",
+  "repository": "https://github.com/NyaaCaster/MyToken.git",
+  "stack": ["React", "TypeScript", "Vite", "TailwindCSS", "Express"],
+  "proxyPort": 8788,
+  "version": "0.1.0",
+  "branch": "master",
+  "license": "AGPL-3.0",
+  "blessing": "Nyaa be with you."
+}

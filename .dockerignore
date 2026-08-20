@@ -1,0 +1,19 @@
+# 依赖与构建产物（避免 COPY . . 时把宿主机 Windows 的 node_modules 覆盖进容器）
+node_modules
+**/node_modules
+dist
+**/dist
+
+# 本地环境 / 编辑器 / VCS
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+.vscode
+.idea
+*.log
+.ref
+
+# 文档在构建时不需要
+# 注：README/.docs 等可保留以便注入镜像；若想精简可加回

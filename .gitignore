@@ -1,0 +1,23 @@
+# Dependencies / build
+node_modules/
+dist/
+*.log
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Claude local settings
+.claude/settings.local.json
+
+# Reference materials (not version-controlled)
+.ref/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
