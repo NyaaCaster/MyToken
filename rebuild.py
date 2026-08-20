@@ -103,17 +103,27 @@ def digest_of(host: str, repo: str, tag: str):
 
 
 def cleanup_registry(host: str, repo: str, keep_tags: set) -> None:
-    """删除 non-latest / non-current-sha 的旧清单。注册表不可达时仅告警，不中断。"""
+    """删除 non-latest / non-current-sha 的旧 tag 清单。
+
+    ⚠️ 关键防护：若某个旧 tag 的 digest 与某个 keep_tag（latest / 当前 sha）相同
+    （镜像内容未变——例如仅前端/配置变更时 server 镜像不变，每轮 digest 一致），
+    绝不能按 digest 删它，否则会连 keep_tag 指向的同一个 manifest 一起删除，
+    导致 latest 丢失（manifest unknown / tags 变 null）。这种情况直接跳过。
+    注册表不可达时仅告警，不中断。
+    """
     try:
         tags = list_tags(host, repo)
     except Exception as e:
         print(f"⚠️ 注册表不可达，跳过清理 {repo}: {e}")
         return
+    keep_digests = {
+        d for t in keep_tags if (d := digest_of(host, repo, t)) is not None
+    }
     for tag in tags:
         if tag in keep_tags:
             continue
         digest = digest_of(host, repo, tag)
-        if not digest:
+        if not digest or digest in keep_digests:
             continue
         status, _, _ = reg_request(
             host, f"/{repo}/manifests/{digest}", method="DELETE",
