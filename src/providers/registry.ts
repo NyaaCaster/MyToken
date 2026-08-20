@@ -27,21 +27,23 @@ export const providers: ProviderDef[] = [
       { key: "apiKey", label: "API Key", secret: true, placeholder: "sk-…" },
     ],
     docPath: "docs/deepseek.md",
-    // 价格峰谷（来源 DeepSeek 官方定价；峰时段 01:00-04:00 / 06:00-10:00 UTC）
+    // 价格峰谷：直接采用 DeepSeek 官网中文定价页的人民币价 + 官方北京峰时段
+    // （官网明确：高峰时段为北京时间 9:00-12:00、14:00-18:00；价格单位 元/百万tokens）
     peak: {
       windows: [
-        { start: 1, end: 4 },
-        { start: 6, end: 10 },
+        { start: 9, end: 12 },
+        { start: 14, end: 18 },
       ],
-      tz: "UTC",
+      tz: "北京时间",
+      currency: "CNY",
       models: {
         "deepseek-v4-flash": {
-          offPeak: { cacheHit: 0.007, cacheMiss: 0.22, output: 0.66 },
-          peak: { cacheHit: 0.014, cacheMiss: 0.44, output: 1.32 },
+          offPeak: { cacheHit: 0.05, cacheMiss: 1.5, output: 4.5 },
+          peak: { cacheHit: 0.1, cacheMiss: 3.0, output: 9.0 },
         },
         "deepseek-v4-pro": {
-          offPeak: { cacheHit: 0.022, cacheMiss: 0.66, output: 1.98 },
-          peak: { cacheHit: 0.044, cacheMiss: 1.32, output: 3.96 },
+          offPeak: { cacheHit: 0.15, cacheMiss: 4.5, output: 13.5 },
+          peak: { cacheHit: 0.3, cacheMiss: 9.0, output: 27.0 },
         },
       },
     },

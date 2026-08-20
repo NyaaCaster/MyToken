@@ -3,8 +3,9 @@
  *
  * 价格峰谷展示（参考费用统计插件的「经典分段与胶囊芯片」峰谷）：
  *  - 24 小时「胶囊分段条」：峰时段高亮蓝、空闲时段灰，当前小时带高亮环。
- *  - 峰时段窗口按**上海时间（UTC+8）**展示与判定（官方以 UTC 定义，已换算）。
- *  - 各模型「空闲 / 峰」两档价（$ / 1M tokens：缓存命中 / 未命中 / 输出）。
+ *  - 峰/谷窗口与价格**直接取自官方**（registry 的 provider.peak：官方人民币价 + 北京峰时段），
+ *    不做汇率换算/时区硬计算；当前时刻小时用真实时区（Asia/Shanghai）取得。
+ *  - 各模型「空闲 / 峰」两档价（币种由 peak.currency 决定：CNY→¥）。
  * 数据静态来自 registry 的 provider.peak（DeepSeek 官方定价）。
  */
 import { Fragment } from "react";
@@ -18,29 +19,34 @@ function isPeakHour(hour: number, windows: ProviderPeak["windows"]): boolean {
   });
 }
 
-function fmtPx(n: number): string {
-  return `$${n.toLocaleString("zh-CN", { maximumFractionDigits: 4 })}`;
+function fmtPx(n: number, currency?: string): string {
+  const sym = currency === "CNY" ? "¥" : "$";
+  return `${sym}${n.toLocaleString("zh-CN", { maximumFractionDigits: 4 })}`;
 }
 
-/** 展示时区：上海 = UTC+8（中国区部署，无夏令时）。 */
-const LOCAL_OFFSET_HOURS = 8;
+/** 当前小时（按峰谷窗口所在时区：北京时间），用真实时区 API 取得，不做硬计算。 */
+function nowHourInBeijing(): number {
+  const val = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Shanghai",
+    hour: "2-digit",
+    hour12: false,
+  }).format(new Date());
+  return Number(val) % 24;
+}
 
 export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
-  // 官方峰时段以 UTC 定义；换算为上海时间用于展示与「当前」判定。
-  const localWindows: ProviderPeak["windows"] = peak.windows.map((w) => ({
-    start: (w.start + LOCAL_OFFSET_HOURS) % 24,
-    end: (w.end + LOCAL_OFFSET_HOURS) % 24,
-  }));
-  const nowHour = (new Date().getUTCHours() + LOCAL_OFFSET_HOURS) % 24;
-  const inPeak = isPeakHour(nowHour, localWindows);
+  // 官方窗口（北京时间 9-12 / 14-18）直接使用，不换算。
+  const nowHour = nowHourInBeijing();
+  const inPeak = isPeakHour(nowHour, peak.windows);
   const modelIds = Object.keys(peak.models);
+  const currency = peak.currency ?? "USD";
 
   return (
     <div className="space-y-3">
       {/* 标题 + 当前相位 */}
       <div className="flex items-center justify-between text-xs">
         <span className="font-medium text-gray-500 dark:text-gray-400">
-          价格峰谷（上海时间 UTC+8）
+          价格峰谷（{peak.tz || "官方"} · {currency === "CNY" ? "元/百万 tokens" : "$/百万 tokens"}）
         </span>
         <span
           className={
@@ -56,7 +62,7 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
       {/* 24 小时胶囊分段条 */}
       <div className="flex gap-[3px]">
         {Array.from({ length: 24 }, (_, h) => {
-          const isPeak = isPeakHour(h, localWindows);
+          const isPeak = isPeakHour(h, peak.windows);
           return (
             <div
               key={h}
@@ -71,9 +77,9 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
         })}
       </div>
 
-      {/* 峰时段说明（上海时间） */}
+      {/* 峰时段说明（官方时区） */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-        {localWindows.map((w, i) => (
+        {peak.windows.map((w, i) => (
           <span key={i} className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-blue-500" />
             峰 {String(w.start).padStart(2, "0")}:00–{String(w.end).padStart(2, "0")}:00
@@ -85,7 +91,7 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
         </span>
       </div>
 
-      {/* 各模型 空闲/峰 两档价（$ / 1M tokens） */}
+      {/* 各模型 空闲/峰 两档价（币种见标题） */}
       <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-white/5">
         <table className="w-full text-xs">
           <thead>
@@ -110,15 +116,15 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
                     <td className="px-2 py-1.5 text-emerald-600 dark:text-emerald-400">
                       空闲
                     </td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.offPeak.cacheHit)}</td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.offPeak.cacheMiss)}</td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.offPeak.output)}</td>
+                    <td className="px-2 py-1.5 text-right">{fmtPx(m.offPeak.cacheHit, currency)}</td>
+                    <td className="px-2 py-1.5 text-right">{fmtPx(m.offPeak.cacheMiss, currency)}</td>
+                    <td className="px-2 py-1.5 text-right">{fmtPx(m.offPeak.output, currency)}</td>
                   </tr>
                   <tr className="border-t border-gray-100 dark:border-white/5">
                     <td className="px-2 py-1.5 text-blue-600 dark:text-blue-400">峰</td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.peak.cacheHit)}</td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.peak.cacheMiss)}</td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.peak.output)}</td>
+                    <td className="px-2 py-1.5 text-right">{fmtPx(m.peak.cacheHit, currency)}</td>
+                    <td className="px-2 py-1.5 text-right">{fmtPx(m.peak.cacheMiss, currency)}</td>
+                    <td className="px-2 py-1.5 text-right">{fmtPx(m.peak.output, currency)}</td>
                   </tr>
                 </Fragment>
               );

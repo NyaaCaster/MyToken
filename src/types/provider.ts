@@ -55,8 +55,10 @@ export interface ProviderPeakWindow {
 /** 价格峰谷：峰时段窗口 + 各模型的空闲/峰两档价。 */
 export interface ProviderPeak {
   windows: ProviderPeakWindow[];
-  /** 时区说明，如 "UTC"。 */
+  /** 峰谷窗口所在时区说明（如 "北京时间"/"UTC"）。 */
   tz: string;
+  /** 价格币种（如 "CNY" 人民币 / "USD" 美元），展示前缀用。 */
+  currency?: string;
   models: Record<string, { offPeak: ProviderPriceTier; peak: ProviderPriceTier }>;
 }
 
