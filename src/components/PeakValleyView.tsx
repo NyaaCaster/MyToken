@@ -21,7 +21,11 @@ function isPeakHour(hour: number, windows: ProviderPeak["windows"]): boolean {
 
 function fmtPx(n: number, currency?: string): string {
   const sym = currency === "CNY" ? "¥" : "$";
-  return `${sym}${n.toLocaleString("zh-CN", { maximumFractionDigits: 4 })}`;
+  // 固定两位小数（即使为 0 也显示 .00），避免位数长短不一
+  return `${sym}${n.toLocaleString("zh-CN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 /** 当前小时（按峰谷窗口所在时区：北京时间），用真实时区 API 取得，不做硬计算。 */
