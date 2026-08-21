@@ -108,7 +108,9 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
               if (!m) return null;
               return (
                 <tr key={id} className="border-t border-gray-100 dark:border-white/5">
-                  <td className="px-2 py-1.5 font-medium">{id.replace(/^deepseek-/, "")}</td>
+                  <td className="px-2 py-1.5 font-medium">
+                    {id.replace(/^deepseek-/, "").replace(/^v4-/, "")}
+                  </td>
                   <TierCell off={m.offPeak.cacheHit} pk={m.peak.cacheHit} inPeak={inPeak} currency={currency} />
                   <TierCell off={m.offPeak.cacheMiss} pk={m.peak.cacheMiss} inPeak={inPeak} currency={currency} />
                   <TierCell off={m.offPeak.output} pk={m.peak.output} inPeak={inPeak} currency={currency} />
