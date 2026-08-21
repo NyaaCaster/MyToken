@@ -20,10 +20,10 @@ function isPeakHour(hour: number, windows: ProviderPeak["windows"]): boolean {
 
 function fmtPx(n: number, currency?: string): string {
   const sym = currency === "CNY" ? "¥" : "$";
-  // 固定两位小数（即使为 0 也显示 .00），避免位数长短不一
+  // 固定 1 位小数（即使为 0 也显示 .0）
   return `${sym}${n.toLocaleString("zh-CN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
   })}`;
 }
 
