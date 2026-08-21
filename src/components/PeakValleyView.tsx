@@ -8,7 +8,6 @@
  *  - 各模型「空闲 / 峰」两档价（币种由 peak.currency 决定：CNY→¥）。
  * 数据静态来自 registry 的 provider.peak（DeepSeek 官方定价）。
  */
-import { Fragment } from "react";
 import type { ProviderPeak } from "../types/provider";
 
 function isPeakHour(hour: number, windows: ProviderPeak["windows"]): boolean {
@@ -95,13 +94,12 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
         </span>
       </div>
 
-      {/* 各模型 空闲/峰 两档价（币种见标题） */}
+      {/* 各模型 两档价，每模型一行；三列各显「空闲 | 峰」，按当前相位着色 */}
       <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-white/5">
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-gray-50 text-left text-gray-500 dark:bg-white/5 dark:text-gray-400">
               <th className="px-2 py-1.5 font-medium">模型</th>
-              <th className="px-2 py-1.5 font-medium">档位</th>
               <th className="px-2 py-1.5 text-right font-medium">缓存命中</th>
               <th className="px-2 py-1.5 text-right font-medium">未命中</th>
               <th className="px-2 py-1.5 text-right font-medium">输出</th>
@@ -112,30 +110,45 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
               const m = peak.models[id];
               if (!m) return null;
               return (
-                <Fragment key={id}>
-                  <tr className="border-t border-gray-100 dark:border-white/5">
-                    <td className="px-2 py-1.5 font-medium" rowSpan={2}>
-                      {id}
-                    </td>
-                    <td className="px-2 py-1.5 text-emerald-600 dark:text-emerald-400">
-                      空闲
-                    </td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.offPeak.cacheHit, currency)}</td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.offPeak.cacheMiss, currency)}</td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.offPeak.output, currency)}</td>
-                  </tr>
-                  <tr className="border-t border-gray-100 dark:border-white/5">
-                    <td className="px-2 py-1.5 text-blue-600 dark:text-blue-400">峰</td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.peak.cacheHit, currency)}</td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.peak.cacheMiss, currency)}</td>
-                    <td className="px-2 py-1.5 text-right">{fmtPx(m.peak.output, currency)}</td>
-                  </tr>
-                </Fragment>
+                <tr key={id} className="border-t border-gray-100 dark:border-white/5">
+                  <td className="px-2 py-1.5 font-medium">{id}</td>
+                  <TierCell off={m.offPeak.cacheHit} pk={m.peak.cacheHit} inPeak={inPeak} currency={currency} />
+                  <TierCell off={m.offPeak.cacheMiss} pk={m.peak.cacheMiss} inPeak={inPeak} currency={currency} />
+                  <TierCell off={m.offPeak.output} pk={m.peak.output} inPeak={inPeak} currency={currency} />
+                </tr>
               );
             })}
           </tbody>
         </table>
       </div>
     </div>
+  );
+}
+
+/** 单个价格单元格：显「空闲 | 峰」两价；按当前相位着色（突出当前时段价）。 */
+function TierCell({
+  off,
+  pk,
+  inPeak,
+  currency,
+}: {
+  off: number;
+  pk: number;
+  inPeak: boolean;
+  currency?: string;
+}) {
+  // 当前空闲：空闲价绿(显眼)、峰价灰；当前峰：峰价蓝(显眼)、空闲价灰
+  const offCls = inPeak
+    ? "text-gray-400 dark:text-gray-500"
+    : "font-semibold text-emerald-600 dark:text-emerald-400";
+  const pkCls = inPeak
+    ? "font-semibold text-blue-600 dark:text-blue-400"
+    : "text-gray-400 dark:text-gray-500";
+  return (
+    <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">
+      <span className={offCls}>{fmtPx(off, currency)}</span>
+      <span className="mx-1 text-gray-300 dark:text-gray-600">|</span>
+      <span className={pkCls}>{fmtPx(pk, currency)}</span>
+    </td>
   );
 }
