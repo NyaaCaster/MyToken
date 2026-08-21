@@ -90,6 +90,8 @@ export interface ProviderStats {
   month?: number;
   /** 累计量。 */
   total?: number;
+  /** 按模型拆分（金额，降序），由日志类供应商（如 QinyAPI）按模型名累计。 */
+  byModel?: Array<{ model: string; amount: number }>;
 }
 
 /**

@@ -15,12 +15,12 @@
  */
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Info, RefreshCw, Settings, ShieldCheck } from "lucide-react";
+import { ChevronRight, Info, RefreshCw, Settings, ShieldCheck } from "lucide-react";
 import { ProviderCard } from "./ProviderCard";
 import { SecretInput } from "./SecretInput";
 import { ProviderDocModal } from "./ProviderDocModal";
 import { PeakValleyView } from "./PeakValleyView";
-import type { ProviderDef, ProviderResult } from "../types/provider";
+import type { ProviderDef, ProviderResult, ProviderStats } from "../types/provider";
 import type { ProviderBalanceState } from "../hooks/useBalances";
 import type { ProviderConfig } from "../hooks/useProvidersConfig";
 
@@ -66,7 +66,13 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 /** 归一结果渲染：余额 / 统计 / 订阅窗口。 */
-function ResultView({ data }: { data: ProviderResult }) {
+function ResultView({
+  data,
+  storageKey,
+}: {
+  data: ProviderResult;
+  storageKey: string;
+}) {
   return (
     <div className="space-y-3 text-sm">
       {data.balance && (
@@ -95,6 +101,9 @@ function ResultView({ data }: { data: ProviderResult }) {
           </div>
         )}
 
+      {/* 今日/累计 下方的「按模型统计」折叠项（仅今日，状态存 localStorage） */}
+      {data.stats && <ByModelStat items={data.stats.byModel} storageKey={storageKey} />}
+
       {data.windows && (
         <div className="space-y-2">
           {data.windows.map((w) => (
@@ -110,6 +119,78 @@ function ResultView({ data }: { data: ProviderResult }) {
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500"
                   style={{ width: `${Math.min(100, Math.max(0, w.percent))}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 按模型统计折叠项：今日各模型消费金额（降序）+ 横向柱状图（最大=100%）。 */
+function ByModelStat({
+  items,
+  storageKey,
+}: {
+  items: ProviderStats["byModel"];
+  storageKey: string;
+}) {
+  const [open, setOpen] = useState(() => {
+    try {
+      return (
+        typeof window !== "undefined" &&
+        window.localStorage.getItem(`mytoken-bymodel-${storageKey}`) === "1"
+      );
+    } catch {
+      return false;
+    }
+  });
+  if (!items || items.length === 0) return null;
+
+  const toggle = () => {
+    const n = !open;
+    setOpen(n);
+    try {
+      window.localStorage.setItem(`mytoken-bymodel-${storageKey}`, n ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
+  const max = items[0]?.amount ?? 0;
+
+  return (
+    <div className="border-t border-gray-100 pt-3 dark:border-white/5">
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex w-full items-center gap-1 text-xs font-medium text-gray-500 transition hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
+      >
+        <ChevronRight
+          className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-90" : ""}`}
+          aria-hidden
+        />
+        按模型统计（{items.length}）
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          {items.map((it) => (
+            <div key={it.model}>
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="min-w-0 truncate text-gray-600 dark:text-gray-300">
+                  {it.model}
+                </span>
+                <span className="font-medium tabular-nums">
+                  {formatAmount(it.amount)} USD
+                </span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500"
+                  style={{
+                    width: `${max > 0 ? Math.max(2, (it.amount / max) * 100) : 0}%`,
+                  }}
                 />
               </div>
             </div>
@@ -321,7 +402,7 @@ export function ProviderModule({
                 ) : state.loading ? (
                   <p className="text-sm text-gray-400">查询中…</p>
                 ) : state.data ? (
-                  <ResultView data={state.data} />
+                  <ResultView data={state.data} storageKey={def.id} />
                 ) : (
                   <p className="text-sm text-gray-400">暂无数据 · 点击刷新获取</p>
                 )}

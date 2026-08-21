@@ -16,6 +16,7 @@ import type {
   ProviderCredentials,
   ProviderDef,
   ProviderResult,
+  ProviderStats,
   ProviderWindow,
 } from "../types/provider";
 
@@ -172,7 +173,7 @@ async function queryQinyapi(
     currency: "USD",
     label: "可用余额",
   };
-  const stats: { total: number; today?: number } = { total: usedQuota / QUOTA_PER_UNIT };
+  const stats: ProviderStats = { total: usedQuota / QUOTA_PER_UNIT };
 
   // 今日花费（best-effort）：GET /api/log/self?type=2&start/end_timestamp 分页累加 quota。
   try {
@@ -181,6 +182,7 @@ async function queryQinyapi(
     let collected = 0;
     let total = Infinity;
     let spent = 0;
+    const perModel: Record<string, number> = {};
     while (page <= LOG_MAX_PAGES && collected < total) {
       const log = await proxyFetch("qinyapi", {
         auth,
@@ -200,12 +202,21 @@ async function queryQinyapi(
       const items = ((log.data as Record<string, unknown> | undefined)?.items ?? []) as unknown[];
       if (items.length === 0) break;
       for (const it of items) {
-        spent += toNum((it as Record<string, unknown> | null)?.quota);
+        const row = (it ?? {}) as Record<string, unknown>;
+        const quota = toNum(row.quota);
+        spent += quota;
+        const modelName = String(row.model_name ?? "未知").trim() || "未知";
+        perModel[modelName] = (perModel[modelName] ?? 0) + quota;
       }
       collected += items.length;
       page += 1;
     }
     stats.today = spent / QUOTA_PER_UNIT;
+    // 按模型累计（仅今日），金额 USD 降序
+    const byModel = Object.entries(perModel)
+      .map(([model, quota]) => ({ model, amount: quota / QUOTA_PER_UNIT }))
+      .sort((a, b) => b.amount - a.amount);
+    if (byModel.length > 0) stats.byModel = byModel;
   } catch {
     // 今日花费统计失败不影响余额展示
   }
