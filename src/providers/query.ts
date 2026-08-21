@@ -191,7 +191,8 @@ async function queryQinyapi(
           start_timestamp: range.start,
           end_timestamp: range.end,
           p: page,
-          page_size: 100,
+          // 用 50 而非 100：new-api 上游 page_size=100 有超线性慢查询（实测 21s），50 仅 2.4s
+          page_size: 50,
         },
         signal,
       });
