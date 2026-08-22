@@ -18,6 +18,7 @@
 
 import express from "express";
 import type { Request, Response } from "express";
+import https from "node:https";
 import { providers } from "./providers.js";
 import type { Ctx, Provider } from "./providers.js";
 
@@ -94,9 +95,45 @@ class UpstreamError extends Error {
 }
 
 /**
- * 统一上游 GET。返回解析后的 JSON 与原 HTTP 状态码。
+ * 统一上游 GET（强制 IPv4 + 有限重定向跟随）。
+ * ⚠️ 必须 family=4：容器无 IPv6 路由（ENETUNREACH），Node 全局 fetch(undici) 走 IPv6
+ * 会挂起直至超时（ETIMEDOUT），曾导致 opencode.ai(Cloudflare) 等返回「无法连接上游服务」；
+ * 显式 IPv4 后正常。重定向最多跟随 5 跳（覆盖未来 302 迁移）。
  * 网络错误/超时抛 UpstreamError；HTTP 非 2xx 不抛，由调用方按状态码归一。
  */
+function requestOnce(
+  target: string,
+  headers: Record<string, string>,
+  signal: AbortSignal,
+): Promise<{ status: number; body: string; redirect?: string }> {
+  return new Promise((resolve, reject) => {
+    const url = new URL(target);
+    const req = https.request(
+      url,
+      {
+        method: "GET",
+        family: 4,
+        headers: { ...headers, ...ACCEPT_JSON },
+        signal,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c: Buffer) => chunks.push(c));
+        res.on("end", () => {
+          const status = res.statusCode ?? 0;
+          const redirect =
+            status >= 300 && status < 400
+              ? (res.headers.location as string | undefined)
+              : undefined;
+          resolve({ status, body: Buffer.concat(chunks).toString("utf8"), redirect });
+        });
+      },
+    );
+    req.on("error", (err) => reject(err));
+    req.end();
+  });
+}
+
 async function fetchUpstream(
   url: string,
   headers: Record<string, string>,
@@ -104,19 +141,22 @@ async function fetchUpstream(
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
-    const resp = await fetch(url, {
-      method: "GET",
-      headers: { ...headers, ...ACCEPT_JSON },
-      signal: ctrl.signal,
-    });
-    const text = await resp.text();
-    let json: unknown = null;
-    try {
-      json = text ? JSON.parse(text) : null;
-    } catch {
-      json = text ? { raw: text } : null;
+    let target = url;
+    for (let hop = 0; hop < 5; hop += 1) {
+      const resp = await requestOnce(target, headers, ctrl.signal);
+      if (resp.redirect) {
+        target = new URL(resp.redirect, target).toString();
+        continue;
+      }
+      let json: unknown = null;
+      try {
+        json = resp.body ? JSON.parse(resp.body) : null;
+      } catch {
+        json = resp.body ? { raw: resp.body } : null;
+      }
+      return { status: resp.status, json };
     }
-    return { status: resp.status, json };
+    throw new Error("重定向次数过多");
   } catch (e) {
     const aborted = e instanceof Error && e.name === "AbortError";
     throw new UpstreamError(aborted ? "请求上游超时" : "无法连接上游服务");
