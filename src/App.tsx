@@ -14,16 +14,16 @@ export default function App() {
   const { getConfig, setField, setEnabled } = useProvidersConfig();
   const { getState, refresh } = useBalances();
 
-  // 刷新所有已启用供应商（供「打开/定时」自动刷新）。
+  // 刷新所有已启用供应商（供「打开/定时」自动刷新）；跳过正在加载中的，防重叠请求。
   const refreshAll = useCallback(() => {
     for (const def of providers) {
       const cfg = getConfig(def.id);
-      if (cfg.enabled) {
+      if (cfg.enabled && !getState(def.id).loading) {
         const creds = cfg.credentials ?? {};
         void refresh(def.id, creds);
       }
     }
-  }, [getConfig, refresh]);
+  }, [getConfig, getState, refresh]);
 
   // 打开页面立即刷新所有已启用供应商；此后按固定间隔自动刷新。
   useEffect(() => {

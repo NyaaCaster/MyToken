@@ -26,8 +26,8 @@ const DEFAULT_PORT = 8788;
 const PORT = process.env.PORT ? Number(process.env.PORT) : DEFAULT_PORT;
 /** 监听地址：默认 127.0.0.1（仅本机，防 LAN 无鉴权中继）；Docker 容器内由 compose 设 HOST=0.0.0.0。 */
 const HOST = process.env.HOST || "127.0.0.1";
-// 上游超时 30s：new-api 的 /api/log/self 大分页实测可达 20s+，15s 会被截断成 502
-const FETCH_TIMEOUT_MS = 30000;
+// 上游超时 60s：兼容 new-api 慢分页与 opencode(Cloudflare) 偶发慢响应（30s 易误报超时）
+const FETCH_TIMEOUT_MS = 60000;
 const ACCEPT_JSON = { Accept: "application/json" } as const;
 
 /** 允许跨源调用本代理的前端开发源（Vite dev 默认端口）。生产由 nginx 同源，不需 CORS。 */

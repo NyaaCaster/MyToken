@@ -395,14 +395,21 @@ export function ProviderModule({
           >
             <div className="border-t border-gray-100 px-4 pb-4 pt-3 dark:border-white/5">
               <div className="rounded-xl bg-gray-50/70 p-4 dark:bg-white/[0.04]">
-                {state.error ? (
+                {state.data ? (
+                  <>
+                    <ResultView data={state.data} storageKey={def.id} />
+                    {state.error && (
+                      <p className="mt-2 flex items-center gap-1.5 text-xs text-red-400">
+                        <span aria-hidden>⚠</span> 刷新失败：{state.error}（保留上次数据）
+                      </p>
+                    )}
+                  </>
+                ) : state.error ? (
                   <p className="flex items-center gap-1.5 text-sm text-red-500">
                     <span aria-hidden>⚠</span> {state.error}
                   </p>
                 ) : state.loading ? (
                   <p className="text-sm text-gray-400">查询中…</p>
-                ) : state.data ? (
-                  <ResultView data={state.data} storageKey={def.id} />
                 ) : (
                   <p className="text-sm text-gray-400">暂无数据 · 点击刷新获取</p>
                 )}

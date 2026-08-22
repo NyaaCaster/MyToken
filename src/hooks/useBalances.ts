@@ -45,9 +45,15 @@ export function useBalances() {
       return data;
     } catch (e) {
       const message = e instanceof Error ? e.message : "查询失败";
+      // 刷新失败保留上次成功数据（不清空），避免偶发超时直接吞掉展示
       setStates((prev) => ({
         ...prev,
-        [id]: { loading: false, error: message, data: null, lastUpdated: Date.now() },
+        [id]: {
+          loading: false,
+          error: message,
+          data: prev[id]?.data ?? null,
+          lastUpdated: prev[id]?.lastUpdated ?? null,
+        },
       }));
       return null;
     }
