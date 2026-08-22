@@ -24,20 +24,27 @@ function fmtPx(n: number, currency?: string): string {
   return `${sym}${n.toLocaleString("zh-CN", { maximumFractionDigits: 2 })}`;
 }
 
-/** 当前小时（按峰谷窗口所在时区：北京时间），用真实时区 API 取得，不做硬计算。 */
-function nowHourInBeijing(): number {
-  const val = new Intl.DateTimeFormat("en-US", {
+/** 当前北京时间「星期 + 小时」（真实时区 API，不做硬计算；周末官方全天谷价）。 */
+function beijingNow(): { weekday: number; hour: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Shanghai",
+    weekday: "short",
     hour: "2-digit",
     hour12: false,
-  }).format(new Date());
-  return Number(val) % 24;
+  }).formatToParts(new Date());
+  const w = parts.find((p) => p.type === "weekday")?.value ?? "";
+  const h = Number(parts.find((p) => p.type === "hour")?.value ?? "0") % 24;
+  const map: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  return { weekday: map[w] ?? 0, hour: h };
 }
 
 export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
-  // 官方窗口（北京时间 9-12 / 14-18）直接使用，不换算。
-  const nowHour = nowHourInBeijing();
-  const inPeak = isPeakHour(nowHour, peak.windows);
+  // 官方窗口（北京时间 9-12 / 14-18）直接使用，不换算；周末（周六/周日）全天空闲
+  const { weekday, hour } = beijingNow();
+  const isWeekend = weekday === 0 || weekday === 6;
+  const inPeak = !isWeekend && isPeakHour(hour, peak.windows);
   const modelIds = Object.keys(peak.models);
   const currency = peak.currency ?? "USD";
 
@@ -46,7 +53,7 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
       {/* 标题 + 当前相位 */}
       <div className="flex items-center justify-between text-xs">
         <span className="font-medium text-gray-500 dark:text-gray-400">
-          价格峰谷（{peak.tz || "官方"} · {currency === "CNY" ? "元/百万 tokens" : "$/百万 tokens"}）
+          价格峰谷
         </span>
         <span
           className={
@@ -55,14 +62,14 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
               : "font-medium text-emerald-600 dark:text-emerald-400"
           }
         >
-          {inPeak ? "当前：峰时段" : "当前：空闲时段"}
+          {inPeak ? "峰时段" : "空闲时段"}
         </span>
       </div>
 
-      {/* 24 小时胶囊分段条 */}
+      {/* 24 小时胶囊分段条（周末全天空闲） */}
       <div className="flex gap-[3px]">
         {Array.from({ length: 24 }, (_, h) => {
-          const isPeak = isPeakHour(h, peak.windows);
+          const isPeak = !isWeekend && isPeakHour(h, peak.windows);
           return (
             <div
               key={h}
@@ -71,23 +78,27 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
                 isPeak
                   ? "bg-blue-500"
                   : "bg-gray-200 dark:bg-white/10"
-              } ${h === nowHour ? "ring-2 ring-blue-700 dark:ring-blue-400" : ""}`}
+              } ${h === hour ? "ring-2 ring-blue-700 dark:ring-blue-400" : ""}`}
             />
           );
         })}
       </div>
 
-      {/* 峰时段说明（官方时区） */}
+      {/* 峰时段说明（北京时间 · 工作日；周末全天空闲） */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
         {peak.windows.map((w, i) => (
           <span key={i} className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-blue-500" />
-            峰 {String(w.start).padStart(2, "0")}:00–{String(w.end).padStart(2, "0")}:00
+            峰（工作日）{String(w.start).padStart(2, "0")}:00–{String(w.end).padStart(2, "0")}:00
           </span>
         ))}
         <span className="inline-flex items-center gap-1">
           <span className="h-2 w-2 rounded-full bg-gray-300 dark:bg-white/20" />
           其余为空闲
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          周六/周日全天空闲
         </span>
       </div>
 
