@@ -118,6 +118,11 @@ function requestOnce(
       },
       (res) => {
         const chunks: Buffer[] = [];
+        // ⚠️ 必须监听 error/aborted：上游在响应中途断开/超时销毁时，IncomingMessage
+        // 只 emit error（旧 Node 为 aborted）而【不会 emit end】。若不监听，本 promise
+        // 永不 settle → 前端 fetch 无超时一直转圈（曾导致所有模块刷新按钮永久转圈）。
+        res.on("error", (err) => reject(err));
+        res.on("aborted", () => reject(new Error("上游响应中断")));
         res.on("data", (c: Buffer) => chunks.push(c));
         res.on("end", () => {
           const status = res.statusCode ?? 0;

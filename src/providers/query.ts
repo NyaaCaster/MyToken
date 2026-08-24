@@ -36,6 +36,9 @@ export class ProviderError extends Error {
   }
 }
 
+/** 前端单次代理请求超时：后端 60s 上游超时，再留网络/排队余量，保证 loading 必然结束。 */
+const PROXY_TIMEOUT_MS = 90_000;
+
 /** 请求 P2 代理层，返回上游原始 JSON（已解包 {ok,data}）。非 2xx / ok=false 抛 ProviderError。 */
 async function proxyFetch(
   id: string,
@@ -49,11 +52,23 @@ async function proxyFetch(
   const headers: Record<string, string> = { Accept: "application/json" };
   if (opts.auth) headers.Authorization = `Bearer ${opts.auth}`;
 
-  const resp = await fetch(`/api/providers/${encodeURIComponent(id)}/query${suffix}`, {
-    method: "GET",
-    headers,
-    signal: opts.signal,
-  });
+  // 无外部 signal 时用自带超时兜底：后端若挂起（上游半开/断流）也必须结束 loading，
+  // 避免刷新按钮永久转圈。
+  const signal = opts.signal ?? AbortSignal.timeout(PROXY_TIMEOUT_MS);
+
+  let resp: Response;
+  try {
+    resp = await fetch(`/api/providers/${encodeURIComponent(id)}/query${suffix}`, {
+      method: "GET",
+      headers,
+      signal,
+    });
+  } catch (e) {
+    const timedOut = e instanceof DOMException && e.name === "AbortError";
+    throw new ProviderError(
+      timedOut ? "查询超时：上游响应过慢，请稍后重试" : "网络请求失败，请检查网络后重试",
+    );
+  }
 
   let ok = false;
   let data: unknown = null;

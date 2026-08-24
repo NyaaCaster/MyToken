@@ -6,7 +6,7 @@
  * 失败时把 ProviderError 的中文 message 写进 error 并 resolve null（P6 供
  * 「开关鉴权联动」判断本次鉴权是否成功）。
  */
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { getProvider } from "../providers/registry";
 import { queryProvider } from "../providers/query";
 import type { ProviderCredentials, ProviderResult } from "../types/provider";
@@ -26,6 +26,11 @@ function initial(): ProviderBalanceState {
 /** 管理各 provider 的查询状态与刷新。 */
 export function useBalances() {
   const [states, setStates] = useState<Record<string, ProviderBalanceState>>({});
+  // ref 镜像最新 states：getState 保持引用稳定，避免 App 的 refreshAll/useEffect
+  // 因 states 每次变化而重建 → 每次任一模块刷新完成都触发一轮全量刷新（刷新风暴，
+  // 让已完成的模块再次 loading、转圈时间被人为拉长）。
+  const statesRef = useRef<Record<string, ProviderBalanceState>>({});
+  statesRef.current = states;
 
   const refresh = useCallback(async (id: string, creds: ProviderCredentials) => {
     const def = getProvider(id);
@@ -64,8 +69,8 @@ export function useBalances() {
   }, []);
 
   const getState = useCallback(
-    (id: string): ProviderBalanceState => states[id] ?? initial(),
-    [states],
+    (id: string): ProviderBalanceState => statesRef.current[id] ?? initial(),
+    [],
   );
 
   return { states, getState, refresh, clear } as const;
