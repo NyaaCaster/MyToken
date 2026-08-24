@@ -1,5 +1,12 @@
 # 硅基流动（SiliconFlow）鉴权密钥获取说明
 
+> ⚠️ **重要状态（2026-08）**：硅基流动官方公告，余额查询接口
+> `GET https://api.siliconflow.cn/v1/user/info` 已于 **2026-08-14 正式停止服务**
+> （返回 410 Gone），替代 API 尚未公布（见
+> [官方更新公告](https://api-docs.siliconflow.cn/docs/release-notes/overview)）。
+> **在官方替代 API 上线前，本模块暂时无法查询余额**，页面会提示该下线状态；
+> 密钥获取步骤仍见下文，替代 API 公布后 MyToken 会自动跟进恢复。
+
 硅基流动（`https://cloud.siliconflow.cn`）的余额查询接口
 `GET https://api.siliconflow.cn/v1/user/info` 用一个 **API Key**（Bearer）即可查
 本人账户的**可用/总余额**（单位：元），无需额外权限。

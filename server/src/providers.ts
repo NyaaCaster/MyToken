@@ -139,6 +139,12 @@ const siliconflow: Provider = {
   name: "硅基流动",
   hosts: ["api.siliconflow.cn"],
   useBearer: true,
+  /**
+   * ⚠️ 官方公告（2026-08-11，api-docs.siliconflow.cn/docs/release-notes/overview）：
+   * 平台系统更新迭代，`/user/info` 接口 2026-08-14 起正式停止服务（返回 410 Gone），
+   * 替代 API「上线后另行通知」。此处保留原端点：在替代 API 公布前，410 走定制文案
+   * 明确告知用户而非显示冷冰冰的状态码；公布后替换为新的 URL 即可。
+   */
   resolve: (ctx) => {
     if (!ctx.authKey) return noKey("硅基流动");
     return {
@@ -146,7 +152,11 @@ const siliconflow: Provider = {
       endpoint: { url: "https://api.siliconflow.cn/v1/user/info", headers: { Authorization: `Bearer ${ctx.authKey}` } },
     };
   },
-  messages: { 401: "硅基流动 API Key 无效或已失效" },
+  messages: {
+    401: "硅基流动 API Key 无效或已失效",
+    404: "硅基流动用户信息接口不存在（官方已下线 /user/info）",
+    410: "硅基流动官方已于 2026-08-14 下线余额查询接口（/user/info），等待官方替代 API 上线后本模块将自动恢复",
+  },
 };
 
 /* -------------------------------------------------------------------------- */
