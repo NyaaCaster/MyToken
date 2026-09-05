@@ -33,3 +33,4 @@ services:
       - PORT=8788
       - HOST=0.0.0.0
       - TZ=Asia/Shanghai
+      - MYTOKEN_OPENCODE_SESSION_ID=${MYTOKEN_OPENCODE_SESSION_ID:-mytoken-instance}

@@ -16,6 +16,14 @@
 export const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
 
+/**
+ * Stable installation identity for OpenCode Go usage requests. It is injected
+ * by the deployment environment rather than accepted from the browser, so all
+ * MyToken queries share one server identity without pretending to be chat
+ * sessions. Keep it stable across restarts; rotate it only when desired.
+ */
+export const OPENCODE_SESSION_ID = process.env.MYTOKEN_OPENCODE_SESSION_ID?.trim() || "mytoken-instance";
+
 /** 请求上下文：从入站请求提炼出的、与供应商无关的输入。 */
 export interface Ctx {
   /** 前端提供的鉴权密钥（取自 Authorization 头或 apiKey 参数），可为 null。 */
@@ -127,7 +135,11 @@ const opencodeGo: Provider = {
       endpoint: {
         url: "https://opencode.ai/zen/go/v1/usage",
         // 必须带浏览器 UA，否则被 opencode.ai 前置的 Cloudflare 以 error 1010 拦截
-        headers: { Authorization: `Bearer ${ctx.authKey}`, "User-Agent": BROWSER_UA },
+        headers: {
+          Authorization: `Bearer ${ctx.authKey}`,
+          "User-Agent": BROWSER_UA,
+          "x-opencode-session": OPENCODE_SESSION_ID,
+        },
       },
     };
   },
