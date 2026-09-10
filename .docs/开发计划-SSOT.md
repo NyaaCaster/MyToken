@@ -15,7 +15,7 @@
 | 模块 | 展示内容 | 说明 |
 |------|---------|------|
 | QinyAPI | 余额（USD）、今日/累计花费 | 双头令牌鉴权 |
-| DeepSeek 官方 | **仅余额** | 无官方统计 API，token/费用统计 V1 不做 |
+| DeepSeek 官方 | 余额 + **静态价格峰谷**（高峰/空闲两档价） | 无官方统计 API（token/费用统计 V1 不做）；价格峰谷为 `src/providers/registry.ts` 内官方价快照，随官方调价手动同步 |
 | OpenCode-Go | 订阅用量（5h/周/月 + 重置时间） | 需浏览器 UA 过 Cloudflare |
 | 硅基流动 | 余额（元） | 无花费明细 API |
 | Coding Plan | Anthropic / Z.ai / MiniMax / Kimi / OpenRouter | SCNet 无 API 端点，V1 不纳入 |

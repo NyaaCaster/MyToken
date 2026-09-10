@@ -3,10 +3,10 @@
  *
  * 价格峰谷展示（参考费用统计插件的「经典分段与胶囊芯片」峰谷）：
  *  - 24 小时「胶囊分段条」：峰时段高亮蓝、空闲时段灰，当前小时带高亮环。
- *  - 峰/谷窗口与价格**直接取自官方**（registry 的 provider.peak：官方人民币价 + 北京峰时段），
+ *  - 峰/谷窗口与价格取自 registry 的 provider.peak（官方人民币价快照，来源与生效时点见 registry.ts 注释），
  *    不做汇率换算/时区硬计算；当前时刻小时用真实时区（Asia/Shanghai）取得。
  *  - 各模型「空闲 / 峰」两档价（币种由 peak.currency 决定：CNY→¥）。
- * 数据静态来自 registry 的 provider.peak（DeepSeek 官方定价）。
+ * 数据静态来自 registry 的 provider.peak（DeepSeek 官方价快照，来源与生效时点见 registry.ts 内注释）。
  */
 import type { ProviderPeak } from "../types/provider";
 
@@ -20,7 +20,7 @@ function isPeakHour(hour: number, windows: ProviderPeak["windows"]): boolean {
 
 function fmtPx(n: number, currency?: string): string {
   const sym = currency === "CNY" ? "¥" : "$";
-  // 最多 2 位小数，无小数则不显示（3 → ¥3、1.5 → ¥1.5、0.05 → ¥0.05）
+  // 最多 2 位小数，无小数则不显示（当前 DeepSeek flash 价：4 → ¥4、1 → ¥1、0.02 → ¥0.02）
   return `${sym}${n.toLocaleString("zh-CN", { maximumFractionDigits: 2 })}`;
 }
 
@@ -47,6 +47,8 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
   const inPeak = !isWeekend && isPeakHour(hour, peak.windows);
   const modelIds = Object.keys(peak.models);
   const currency = peak.currency ?? "USD";
+  // 官方计价单位（中文定价页：「以“百万 tokens”为单位」，价格即人民币元）
+  const unit = currency === "CNY" ? "元/百万 tokens" : "美元/百万 tokens";
 
   return (
     <div className="space-y-3">
@@ -54,6 +56,7 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
       <div className="flex items-center justify-between text-xs">
         <span className="font-medium text-gray-500 dark:text-gray-400">
           价格峰谷
+          <span className="ml-1 font-normal text-gray-400 dark:text-gray-500">（{unit}）</span>
         </span>
         <span
           className={
@@ -101,6 +104,12 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
           周六/周日全天空闲
         </span>
       </div>
+
+      {/* 价格来源与时效披露（用户可见；与 public/docs/deepseek.md 同口径） */}
+      <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+        价格来源：DeepSeek 开放平台 2026-09-09 调价公告（北京时间 2026-09-10 12:00 生效）；
+        官方定价页截至 2026-09-10 13:04–13:06 两次独立复核仍显示调价前价格、尚未同步。
+      </p>
 
       {/* 各模型 两档价，每模型一行；三列各显「空闲 | 峰」，按当前相位着色 */}
       <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-white/5">

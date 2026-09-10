@@ -35,7 +35,7 @@
 | 供应商 | 展示内容 | 鉴权 |
 |--------|---------|------|
 | **QinyAPI** | 余额（USD）、今日/累计花费 | 访问令牌 + 用户 ID |
-| **DeepSeek** | 余额 + 价格峰谷（24h 分段胶囊） | API Key |
+| **DeepSeek** | 余额 + 价格峰谷（24h 分段胶囊；元/百万 tokens 静态快照） | API Key |
 | **OpenCode Go** | 订阅用量（5h / 周 / 月 + 重置时间） | API Key |
 | **硅基流动** | 可用 / 总余额（元） | API Key |
 | **Anthropic** | Coding Plan 用量窗口 | OAuth 令牌 / API Key |

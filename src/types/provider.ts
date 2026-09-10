@@ -39,14 +39,14 @@ export interface ProviderDef {
   peak?: ProviderPeak;
 }
 
-/** 一档价格（美元 / 1M tokens，DeepSeek 官方结构）。 */
+/** 一档价格（币种见 ProviderPeak.currency；DeepSeek 为元/百万 tokens）。 */
 export interface ProviderPriceTier {
   cacheHit: number;
   cacheMiss: number;
   output: number;
 }
 
-/** 峰谷窗口（UTC 小时，半开区间 [start, end)）。 */
+/** 峰谷窗口（小时数，半开区间 [start,end)）；tz 当前仅为说明字段，渲染端固定按 Asia/Shanghai 取值，切换时区供应商需先改渲染端。 */
 export interface ProviderPeakWindow {
   start: number;
   end: number;
