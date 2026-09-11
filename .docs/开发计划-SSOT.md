@@ -61,8 +61,8 @@
 | P4 | 供应商适配器层 + 四家核心模块（QinyAPI / DeepSeek / OpenCode-Go / 硅基流动） | ✅ | P2,P3 |
 | P5 | Coding Plan 模块（Anthropic / Z.ai / MiniMax / Kimi / OpenRouter，各自独立开关） | ✅ | P4 |
 | P6 | 前端交互完善（密钥隐藏显示、? 浮窗渲染 md 说明、开关鉴权联动、模块收起/展开） | ✅ | P3 |
-| P7 | 端到端验证 + Docker + macmini 部署 + README/SSOT 收尾 | 🟡（代码/产物完成；联网构建与 macmini 部署待续） | P4,P5,P6 |
-| P8 | DeepSeek「今日消耗（估算）」——余额差值采样与展示 | 🟡 | P4 |
+| P7 | 端到端验证 + Docker + macmini 部署 + README/SSOT 收尾 | 🟡（Docker 构建 + macmini 部署已完成（2026-09-11）；真实 Key 对拍待续） | P4,P5,P6 |
+| P8 | DeepSeek「今日消耗（估算）」——余额差值采样与展示 | ✅（含构建、34 项纯逻辑仿真、macmini 上线；真实 Key 冒烟待续） | P4 |
 
 ---
 
