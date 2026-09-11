@@ -101,65 +101,73 @@ function ResultView({
 }) {
   return (
     <div className="space-y-3 text-sm">
+      {/* 余额（左） + 今日消耗（估算，右，P8）：同一行左右并排，右块数字右对齐、说明另起一行
+          口径见 .docs/设计-P8-今日消耗估算.md */}
       {data.balance && (
-        <p className="flex items-baseline gap-2">
-          <span className="text-xs text-gray-400 dark:text-gray-500">
-            {data.balance.label}
-          </span>
-          <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
-            {formatAmount(data.balance.amount)}
-            <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
-              {data.balance.currency}
-            </span>
-          </span>
-        </p>
-      )}
-
-      {/* 今日消耗（估算，P8）：接在「余额」行之后；口径见 .docs/设计-P8-今日消耗估算.md */}
-      {dailySpend && data.balance && (
-        <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="text-xs text-gray-400 dark:text-gray-500">今日</span>
-          {spend ? (
-            <>
-              <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                {formatSpend(spend.spend)}
-                <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
-                  {spend.currency}
-                </span>
-              </span>
-              <span
-                className="inline-flex cursor-help items-center gap-1 text-xs text-gray-400 dark:text-gray-500"
-                title={DAILY_SPEND_TIP}
-              >
-                <Info className="h-3 w-3" aria-hidden />
-                估算 · 自 {bjtHm(spend.since)} 起
-              </span>
-              {spend.suspect && (
-                <>
-                  <span
-                    className="cursor-help text-xs text-amber-600 dark:text-amber-400"
-                    title={`短间隔内余额减少 ${formatSpend(
-                      spend.suspectAmount ?? 0,
-                    )}，可能是赠送余额过期或平台调整，本次估算可能失真。`}
-                  >
-                    ⚠ 异常变动
-                  </span>
-                  <button
-                    type="button"
-                    onClick={onResetSpend}
-                    className="text-xs text-amber-600 underline underline-offset-2 transition hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
-                  >
-                    重置基线
-                  </button>
-                </>
-              )}
-            </>
-          ) : (
+        <div className="flex items-start justify-between gap-4">
+          <p className="flex items-baseline gap-2">
             <span className="text-xs text-gray-400 dark:text-gray-500">
-              — 等待采样
+              {data.balance.label}
             </span>
+            <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              {formatAmount(data.balance.amount)}
+              <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
+                {data.balance.currency}
+              </span>
+            </span>
+          </p>
+
+          {dailySpend && (
+            <div className="flex-none text-right">
+              <p className="flex items-baseline justify-end gap-2">
+                <span className="text-xs text-gray-400 dark:text-gray-500">今日</span>
+                {spend ? (
+                  <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                    {formatSpend(spend.spend)}
+                    <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
+                      {spend.currency}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    — 等待采样
+                  </span>
+                )}
+              </p>
+
+              {spend && (
+                <p className="mt-0.5 flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-xs text-gray-400 dark:text-gray-500">
+                  <span
+                    className="inline-flex cursor-help items-center gap-1"
+                    title={DAILY_SPEND_TIP}
+                  >
+                    <Info className="h-3 w-3" aria-hidden />
+                    估算 · 自 {bjtHm(spend.since)} 起
+                  </span>
+                  {spend.suspect && (
+                    <>
+                      <span
+                        className="cursor-help text-amber-600 dark:text-amber-400"
+                        title={`短间隔内余额减少 ${formatSpend(
+                          spend.suspectAmount ?? 0,
+                        )}，可能是赠送余额过期或平台调整，本次估算可能失真。`}
+                      >
+                        ⚠ 异常变动
+                      </span>
+                      <button
+                        type="button"
+                        onClick={onResetSpend}
+                        className="text-amber-600 underline underline-offset-2 transition hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                      >
+                        重置基线
+                      </button>
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
           )}
-        </p>
+        </div>
       )}
 
       {data.stats &&

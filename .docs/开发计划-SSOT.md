@@ -131,8 +131,9 @@
     `src/types/provider.ts` 的 `ProviderBalance` 增可选 `granted`/`toppedUp`，`ProviderDef` 增
     `dailySpend?: boolean`；`registry.ts` 给 DeepSeek 打开该开关。
   - `src/hooks/useBalances.ts`：成功查询后按开关写入一条采样。
-  - `src/components/ProviderModule.tsx`：DeepSeek 的「余额」行后追加「今日」行
-    （`今日 <金额> <币种> · 估算 · 自 HH:MM 起`，异常时 ⚠ + 「重置基线」按钮）。
+  - `src/components/ProviderModule.tsx`：DeepSeek 的「今日」与「余额」**同一行左右并排**
+    （左 `余额 <金额> <币种>`，右 `今日 <金额> <币种>` + 小字 `估算 · 自 HH:MM 起`，
+    异常时 ⚠ + 「重置基线」按钮）。
 - **用户文档**：`public/docs/deepseek.md` 增「今日消耗（估算）」一节说明口径与误差来源。
 - **边界（写入文档，不追求消除）**：首次采样前与页面关闭期间的消耗不可观测（系统性偏低）；
   余额精度为分，日消耗接近 0.01 元时数字会跳；localStorage 按浏览器隔离，多端数字可能不同。
