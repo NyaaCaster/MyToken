@@ -35,7 +35,7 @@
 | 供应商 | 展示内容 | 鉴权 |
 |--------|---------|------|
 | **QinyAPI** | 余额（USD）、今日/累计花费 | 访问令牌 + 用户 ID |
-| **DeepSeek** | 余额 + 价格峰谷（24h 分段胶囊；元/百万 tokens 静态快照） | API Key |
+| **DeepSeek** | 余额 + **今日消耗（估算）** + 价格峰谷（24h 分段胶囊；元/百万 tokens 静态快照） | API Key |
 | **OpenCode Go** | 订阅用量（5h / 周 / 月 + 重置时间） | API Key |
 | **硅基流动** | 可用 / 总余额（元） | API Key |
 | **Anthropic** | Coding Plan 用量窗口 | OAuth 令牌 / API Key |
@@ -44,7 +44,14 @@
 | **Kimi / Moonshot** | PAYG 余额 | API Key |
 | **OpenRouter** | 预付 Credits | API Key |
 
-> ℹ️ 各家「能查什么」以官方 API 能力为限：DeepSeek 无「今日消耗」统计 API（仅余额 + 定价峰谷）；硅基流动无「代金券」API（仅余额）。详见 `.docs/设计审计.md` 与 `.ref/` 调研。
+> ℹ️ 各家「能查什么」以官方 API 能力为限：DeepSeek 无「今日消耗」统计 API（余额为官方接口，
+> 定价峰谷为源码内快照）；硅基流动无「代金券」API（仅余额）。详见 `.docs/设计审计.md` 与 `.ref/` 调研。
+>
+> **DeepSeek「今日消耗」是估算**：官方无用量统计接口，MyToken 只能按本机采样的余额差值推算
+> ——「今天最早一次采样余额 − 当前余额」，并按 `topped_up_balance` 剔除充值。因此它**不是官方账单**：
+> 首次采样之前 / 页面关闭期间的消耗无法观测（实际可能更高），余额精度为分（日消耗接近 0.01 元时数字会跳），
+> 采样只存本浏览器 localStorage（不同设备数字可能不一致）。口径与完整边界见
+> `.docs/设计-P8-今日消耗估算.md` 与模块内「?」说明。
 
 ---
 
@@ -166,10 +173,11 @@ ssh macmini 'cd /root/DockerContainer/MyToken && python3 restart.py'
 MyToken/
 ├── meta.json                 # 项目元数据 SSOT
 ├── src/
-│   ├── types/                # Provider 类型定义（含峰谷）
+│   ├── types/                # Provider 类型定义（含峰谷 / 今日消耗估算）
 │   ├── providers/            # 供应商注册表 + 查询适配器
+│   ├── lib/                  # 与框架无关的纯逻辑（dailySpend：余额采样 + 今日消耗估算）
 │   ├── components/           # UI（Header/ProviderModule/PeakValley/Modal…）
-│   └── hooks/                # useTheme / useBalances / useProvidersConfig
+│   └── hooks/                # useTheme / useBalances / useProvidersConfig / useDailySpend
 ├── server/                   # Express 代理层（域名白名单 + 错误归一）
 │   └── src/{index,providers}.ts
 ├── public/

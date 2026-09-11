@@ -27,6 +27,10 @@ export const providers: ProviderDef[] = [
       { key: "apiKey", label: "API Key", secret: true, placeholder: "sk-…" },
     ],
     docPath: "docs/deepseek.md",
+    // 今日消耗（P8）：官方无统计接口 → 每次成功查询记录一条余额采样，按
+    // 「当日最早采样 → 当前」的余额净减少估算（充值用 topped_up_balance 剔除）。
+    // 口径与误差来源见 .docs/设计-P8-今日消耗估算.md 与 public/docs/deepseek.md。
+    dailySpend: true,
     // 价格峰谷：人民币价（元/百万 tokens，CNY），空闲价 = 高峰价的一半（高峰 = 2 × 空闲）。
     // 新价依据：DeepSeek 开放平台调价公告（2026-09-09 发布，北京时间 2026-09-10 12:00 生效）——
     //   flash 系列 空闲 0.02/1/4、高峰 0.04/2/8。

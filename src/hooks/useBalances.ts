@@ -5,10 +5,15 @@
  * refresh(id, creds) 触发查询并归一到 ProviderResult；成功 resolve 该结果，
  * 失败时把 ProviderError 的中文 message 写进 error 并 resolve null（P6 供
  * 「开关鉴权联动」判断本次鉴权是否成功）。
+ *
+ * P8：成功查询后，若该供应商开了 `def.dailySpend`（当前仅 DeepSeek），顺带记录一条
+ * 余额采样（供「今日消耗（估算）」按差值推算）。此处是查询的唯一收敛点，
+ * 自动刷新 / 手动刷新 / 启用认证都走它，采样点因此天然一致。
  */
 import { useCallback, useRef, useState } from "react";
 import { getProvider } from "../providers/registry";
 import { queryProvider } from "../providers/query";
+import { recordSample } from "../lib/dailySpend";
 import type { ProviderCredentials, ProviderResult } from "../types/provider";
 
 /** 单个供应商的查询状态。 */
@@ -43,6 +48,15 @@ export function useBalances() {
 
     try {
       const data = await queryProvider(def, creds);
+      // P8：先落采样再更新状态（同一批次渲染即可读到最新采样，避免「今日」慢一拍）
+      if (def.dailySpend && data.balance) {
+        recordSample(def.id, {
+          total: data.balance.amount,
+          currency: data.balance.currency,
+          granted: data.balance.granted ?? null,
+          toppedUp: data.balance.toppedUp ?? null,
+        });
+      }
       setStates((prev) => ({
         ...prev,
         [id]: { loading: false, error: null, data, lastUpdated: Date.now() },

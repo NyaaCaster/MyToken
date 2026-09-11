@@ -20,7 +20,14 @@ import { ProviderCard } from "./ProviderCard";
 import { SecretInput } from "./SecretInput";
 import { ProviderDocModal } from "./ProviderDocModal";
 import { PeakValleyView } from "./PeakValleyView";
-import type { ProviderDef, ProviderResult, ProviderStats } from "../types/provider";
+import { useDailySpend } from "../hooks/useDailySpend";
+import { bjtHm } from "../lib/dailySpend";
+import type {
+  DailySpend,
+  ProviderDef,
+  ProviderResult,
+  ProviderStats,
+} from "../types/provider";
 import type { ProviderBalanceState } from "../hooks/useBalances";
 import type { ProviderConfig } from "../hooks/useProvidersConfig";
 
@@ -42,6 +49,16 @@ export interface ProviderModuleProps {
 function formatAmount(n: number): string {
   return n.toLocaleString("zh-CN", { maximumFractionDigits: 4 });
 }
+
+/** 今日消耗金额：余额本身是「分」精度，固定两位小数（多显示位反而制造精度错觉）。 */
+function formatSpend(n: number): string {
+  return n.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/** 「今日消耗（估算）」口径说明（原生 title 提示，不新增浮窗）。 */
+const DAILY_SPEND_TIP =
+  "今日消耗为估算：今日最早一次采样余额 − 当前余额（充值已按 topped_up_balance 剔除）。" +
+  "DeepSeek 官方无用量统计接口，页面打开前与关闭期间的消耗无法观测，故实际消耗可能高于此值。";
 
 function formatResets(value: string): string {
   const date = new Date(value);
@@ -65,13 +82,22 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** 归一结果渲染：余额 / 统计 / 订阅窗口。 */
+/** 归一结果渲染：余额 / 今日消耗（估算，P8）/ 统计 / 订阅窗口。 */
 function ResultView({
   data,
   storageKey,
+  dailySpend,
+  spend,
+  onResetSpend,
 }: {
   data: ProviderResult;
   storageKey: string;
+  /** 该供应商是否开启「今日消耗（估算）」采样（P8） */
+  dailySpend?: boolean;
+  /** 今日消耗（估算）结果；无当日样本时为 null */
+  spend?: DailySpend | null;
+  /** 异常时「重置基线」回调 */
+  onResetSpend?: () => void;
 }) {
   return (
     <div className="space-y-3 text-sm">
@@ -86,6 +112,53 @@ function ResultView({
               {data.balance.currency}
             </span>
           </span>
+        </p>
+      )}
+
+      {/* 今日消耗（估算，P8）：接在「余额」行之后；口径见 .docs/设计-P8-今日消耗估算.md */}
+      {dailySpend && data.balance && (
+        <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-xs text-gray-400 dark:text-gray-500">今日</span>
+          {spend ? (
+            <>
+              <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                {formatSpend(spend.spend)}
+                <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
+                  {spend.currency}
+                </span>
+              </span>
+              <span
+                className="inline-flex cursor-help items-center gap-1 text-xs text-gray-400 dark:text-gray-500"
+                title={DAILY_SPEND_TIP}
+              >
+                <Info className="h-3 w-3" aria-hidden />
+                估算 · 自 {bjtHm(spend.since)} 起
+              </span>
+              {spend.suspect && (
+                <>
+                  <span
+                    className="cursor-help text-xs text-amber-600 dark:text-amber-400"
+                    title={`短间隔内余额减少 ${formatSpend(
+                      spend.suspectAmount ?? 0,
+                    )}，可能是赠送余额过期或平台调整，本次估算可能失真。`}
+                  >
+                    ⚠ 异常变动
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onResetSpend}
+                    className="text-xs text-amber-600 underline underline-offset-2 transition hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                  >
+                    重置基线
+                  </button>
+                </>
+              )}
+            </>
+          ) : (
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              — 等待采样
+            </span>
+          )}
         </p>
       )}
 
@@ -221,6 +294,14 @@ export function ProviderModule({
 
   const showSettings = enabled ? settingsOpen : editing;
   const showData = enabled && !showSettings;
+
+  // P8：今日消耗（估算）——仅对开启 dailySpend 的供应商订阅采样日志（deepseek）
+  const { spend, reset: resetSpend } = useDailySpend(def.dailySpend ? def.id : null);
+  // 重置基线后立刻刷新一次：让新基线（当前余额）马上落库，避免「今日」空窗
+  const handleResetSpend = () => {
+    resetSpend();
+    onRefresh();
+  };
 
   const secretEmpty = def.fields
     .filter((f) => f.secret)
@@ -397,7 +478,13 @@ export function ProviderModule({
               <div className="rounded-xl bg-gray-50/70 p-4 dark:bg-white/[0.04]">
                 {state.data ? (
                   <>
-                    <ResultView data={state.data} storageKey={def.id} />
+                    <ResultView
+                      data={state.data}
+                      storageKey={def.id}
+                      dailySpend={def.dailySpend}
+                      spend={spend}
+                      onResetSpend={handleResetSpend}
+                    />
                     {state.error && (
                       <p className="mt-2 flex items-center gap-1.5 text-xs text-red-400">
                         <span aria-hidden>⚠</span> 刷新失败：{state.error}（保留上次数据）

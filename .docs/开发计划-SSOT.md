@@ -15,12 +15,15 @@
 | 模块 | 展示内容 | 说明 |
 |------|---------|------|
 | QinyAPI | 余额（USD）、今日/累计花费 | 双头令牌鉴权 |
-| DeepSeek 官方 | 余额 + **静态价格峰谷**（高峰/空闲两档价） | 无官方统计 API（token/费用统计 V1 不做）；价格峰谷为 `src/providers/registry.ts` 内官方价快照，随官方调价手动同步 |
+| DeepSeek 官方 | 余额 + **静态价格峰谷**（高峰/空闲两档价）+ **今日消耗（估算，P8）** | 无官方统计 API；今日消耗为**本机余额差值估算**（见 P8 与 `.docs/设计-P8-今日消耗估算.md`）；价格峰谷为 `src/providers/registry.ts` 内官方价快照，随官方调价手动同步 |
 | OpenCode-Go | 订阅用量（5h/周/月 + 重置时间） | 需浏览器 UA 过 Cloudflare |
 | 硅基流动 | 余额（元） | 无花费明细 API |
 | Coding Plan | Anthropic / Z.ai / MiniMax / Kimi / OpenRouter | SCNet 无 API 端点，V1 不纳入 |
 
 **不在范围**：不做 LLM 流量代理、不做充值、不做账本记账统计、不做 SCNet。
+
+> 口径澄清（P8）：DeepSeek 的「今日消耗」是**余额差值估算**（本机采样，非官方账单、非账本记账），
+> 不违背「不做账本记账统计」——它不监听任何流量、不持久化密钥，只记录余额数字样本。
 
 ## 二、已确认架构与约束
 
@@ -59,6 +62,7 @@
 | P5 | Coding Plan 模块（Anthropic / Z.ai / MiniMax / Kimi / OpenRouter，各自独立开关） | ✅ | P4 |
 | P6 | 前端交互完善（密钥隐藏显示、? 浮窗渲染 md 说明、开关鉴权联动、模块收起/展开） | ✅ | P3 |
 | P7 | 端到端验证 + Docker + macmini 部署 + README/SSOT 收尾 | 🟡（代码/产物完成；联网构建与 macmini 部署待续） | P4,P5,P6 |
+| P8 | DeepSeek「今日消耗（估算）」——余额差值采样与展示 | 🟡 | P4 |
 
 ---
 
@@ -112,6 +116,29 @@
 - `rebuild.py`（Python，构建→推送私有仓库）+ 说明 `restart.py`（macmini 拉取→重启）。
 - README 生成、SSOT 全部 ✅、`.docs/阶段交接` 补齐。
 - 验证：macmini 上线后页面可用、全模块查询正常。
+
+### P8 — DeepSeek「今日消耗（估算）」
+- **背景**：DeepSeek 无官方统计 API（见 `.ref/costmeter-供应商查询调研.md` 结论）；
+  项目不做 LLM 流量代理 → 唯一可行路线是**余额差值估算**。
+- **口径**：今日消耗 = 从「今天第一次采样时刻」到「当前」的余额净减少，并剔除充值
+  （`topped_up_balance` 增量加回）；日界固定 Asia/Shanghai；**不做累计**。
+- **实现**：
+  - 新增 `src/lib/dailySpend.ts`：采样存储（localStorage `mytoken-balance-log`，7 天/400 条上限、
+    同值去重、跨标签页 storage 订阅）+ 纯函数 `computeFromSamples`（逐样本对累加 + 充值剔除 +
+    币种漂移截断 + 短间隔大额异常检测）。
+  - 新增 `src/hooks/useDailySpend.ts`：`useSyncExternalStore` 桥接，供组件读取/重置。
+  - `src/providers/query.ts` 的 DeepSeek 适配器保留 `granted_balance` / `topped_up_balance`；
+    `src/types/provider.ts` 的 `ProviderBalance` 增可选 `granted`/`toppedUp`，`ProviderDef` 增
+    `dailySpend?: boolean`；`registry.ts` 给 DeepSeek 打开该开关。
+  - `src/hooks/useBalances.ts`：成功查询后按开关写入一条采样。
+  - `src/components/ProviderModule.tsx`：DeepSeek 的「余额」行后追加「今日」行
+    （`今日 <金额> <币种> · 估算 · 自 HH:MM 起`，异常时 ⚠ + 「重置基线」按钮）。
+- **用户文档**：`public/docs/deepseek.md` 增「今日消耗（估算）」一节说明口径与误差来源。
+- **边界（写入文档，不追求消除）**：首次采样前与页面关闭期间的消耗不可观测（系统性偏低）；
+  余额精度为分，日消耗接近 0.01 元时数字会跳；localStorage 按浏览器隔离，多端数字可能不同。
+- **验证**：`npm run build` 通过 + `computeFromSamples` 纯函数仿真（正常/充值/充值+消耗/过期异常/
+  跨天/币种漂移/去重/裁剪）+ `dist` 产物校验 + macmini 上线页面 200。
+- **详细设计**：`.docs/设计-P8-今日消耗估算.md`。
 
 ---
 

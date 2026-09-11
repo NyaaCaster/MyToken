@@ -245,6 +245,10 @@ async function queryQinyapi(
 interface BalanceInfo {
   currency: string;
   total_balance: number;
+  /** 赠送余额（未过期部分）；缺失为 null。P8 今日消耗估算用于识别赠送余额过期。 */
+  granted_balance: number | null;
+  /** 充值余额；缺失为 null。P8 用它把充值从「余额净减少」里剔除。 */
+  topped_up_balance: number | null;
 }
 
 /** 复用「CNY 优先 + 正余额」挑选逻辑（见 .ref 供应商调研 §1.1）。 */
@@ -268,7 +272,12 @@ async function queryDeepseek(
   const infos: BalanceInfo[] = Array.isArray(data.balance_infos)
     ? data.balance_infos.map((it) => {
         const row = (it ?? {}) as Record<string, unknown>;
-        return { currency: String(row.currency ?? ""), total_balance: toNum(row.total_balance) };
+        return {
+          currency: String(row.currency ?? ""),
+          total_balance: toNum(row.total_balance),
+          granted_balance: rawNum(row.granted_balance),
+          topped_up_balance: rawNum(row.topped_up_balance),
+        };
       })
     : [];
   const picked = pickBalanceInfo(infos);
@@ -278,6 +287,9 @@ async function queryDeepseek(
     amount: picked.total_balance,
     currency: picked.currency || "CNY",
     label: "余额",
+    // 赠送/充值余额参与 P8 今日消耗估算（缺失时省略，估算端按「无该项信息」处理）
+    ...(picked.granted_balance !== null ? { granted: picked.granted_balance } : {}),
+    ...(picked.topped_up_balance !== null ? { toppedUp: picked.topped_up_balance } : {}),
   };
   return { ok: true, balance, raw: data };
 }

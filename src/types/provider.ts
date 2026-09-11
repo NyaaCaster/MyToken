@@ -37,6 +37,12 @@ export interface ProviderDef {
   docPath: string;
   /** 价格峰谷配置（可选，仅支持峰谷计价的供应商提供，如 DeepSeek）。 */
   peak?: ProviderPeak;
+  /**
+   * 是否启用「今日消耗（估算）」采样（P8，可选）：
+   * 仅余额型且无官方统计接口的供应商（当前 = DeepSeek）打开。
+   * 开启后每次成功查询都会记录一条余额采样（localStorage），用于按差值估算今日消耗。
+   */
+  dailySpend?: boolean;
 }
 
 /** 一档价格（币种见 ProviderPeak.currency；DeepSeek 为元/百万 tokens）。 */
@@ -70,6 +76,26 @@ export interface ProviderBalance {
   currency: string;
   /** 展示标签，如 "可用余额" / "余额"。 */
   label: string;
+  /** 赠送余额（可选，DeepSeek `granted_balance`；用于识别赠送余额过期等异常）。 */
+  granted?: number;
+  /** 充值余额（可选，DeepSeek `topped_up_balance`；用于把充值从「余额净减少」里剔除）。 */
+  toppedUp?: number;
+}
+
+/** 「今日消耗（估算）」结果（P8，见 src/lib/dailySpend.ts 与 .docs/设计-P8-今日消耗估算.md）。 */
+export interface DailySpend {
+  /** 估算消耗金额（>= 0；分精度）。 */
+  spend: number;
+  /** 币种（跟随余额）。 */
+  currency: string;
+  /** 基线（当日最早一次采样）时刻，Unix 毫秒。 */
+  since: number;
+  /** 参与计算的样本数。 */
+  samples: number;
+  /** 疑似异常：短间隔内余额大额减少（可能是赠送余额过期或平台调整）。 */
+  suspect: boolean;
+  /** 触发异常的金额合计（仅 suspect 时给出）。 */
+  suspectAmount?: number;
 }
 
 /** 归一化的订阅用量窗口。 */
