@@ -108,7 +108,8 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
       {/* 价格来源与时效披露（用户可见；与 public/docs/deepseek.md 同口径） */}
       <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
         价格来源：DeepSeek 开放平台 2026-09-09 调价公告（北京时间 2026-09-10 12:00 生效）；
-        官方定价页截至 2026-09-10 13:04–13:06 两次独立复核仍显示调价前价格、尚未同步。
+        官方定价页已于 2026-09-12 复核同步（空闲价 = 高峰价的一半；高峰仅限工作日
+        9:00-12:00、14:00-18:00，周末全天空闲）。
       </p>
 
       {/* 各模型 两档价，每模型一行；三列各显「空闲 | 峰」，按当前相位着色 */}
