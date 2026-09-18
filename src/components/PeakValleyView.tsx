@@ -11,13 +11,14 @@
 import type { ProviderPeak } from "../types/provider";
 
 /**
- * 模型行展示名（`peak.models` 的键 → 表格里显示的名字）。
- * 不靠字符串裁剪硬推：官方改模型名时（如 2026-09-10 `deepseek-v4-flash` → `deepseek-flash`）
+ * 模型行展示名（`peak.models` 的键 → 表格里显示的名字）：只显官方模型名去掉
+ * `deepseek-` 前缀后的短名，不带任何括号补充。
+ * 显式映射而非字符串裁剪，官方改模型名时（如 2026-09-10 `deepseek-v4-flash` → `deepseek-flash`）
  * 只改这张表，名称相关逻辑不会跟着串味。
  */
 const MODEL_LABELS: Record<string, string> = {
-  "deepseek-flash": "flash（V4.1 Flash）",
-  "deepseek-v4-pro": "pro（V4 Pro）",
+  "deepseek-flash": "flash",
+  "deepseek-v4-pro": "pro",
 };
 
 function isPeakHour(hour: number, windows: ProviderPeak["windows"]): boolean {
