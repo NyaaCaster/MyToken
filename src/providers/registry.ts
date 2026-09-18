@@ -32,18 +32,24 @@ export const providers: ProviderDef[] = [
     // 口径与误差来源见 .docs/设计-P8-今日消耗估算.md 与 public/docs/deepseek.md。
     dailySpend: true,
     // 价格峰谷：人民币价（元/百万 tokens，CNY），空闲价 = 高峰价的一半（高峰 = 2 × 空闲）。
-    // 新价依据：DeepSeek 开放平台调价公告（2026-09-09 发布，北京时间 2026-09-10 12:00 生效）——
-    //   flash 系列 空闲 0.02/1/4、高峰 0.04/2/8。
-    //   公告逐字转载（含平台公告截图）：https://www.dzwww.com/news/yw/202609/t20260909_18097412.htm
-    //   官方通知邮件（V4.1 Flash 新定价）：https://m.ithome.com/html/1000692.htm
-    //   证据等级：官方一手公告页 platform.deepseek.com/announcements 需登录（未登录仅返回 SPA 空壳），
-    //   故一级可核查载体为上述逐字转载 + 官方公告/通知邮件截图。
-    //   官方定价页 https://api-docs.deepseek.com/zh-cn/quick_start/pricing 已于 2026-09-12 复核
-    //   同步为新价（flash 空闲 0.02/1/4、pro 空闲 0.15/4.5/13.5；高峰 = 空闲 ×2），与本表逐项一致。
-    // 时段（未变，依据官方定价页脚注）：高峰 = 北京时间周一至周五 9:00-12:00、14:00-18:00，
-    //   其余（含周末全天）为空闲。
-    // deepseek-v4-pro：公告未调价，维持原值；官方定价页脚注（2026-09-12 复核）明确 pro 在
-    //   2026-09-14 之后继续提供、计费方式不变——原通知邮件「pro 下线并路由到 V4.1 Flash」的口径作废。
+    // 【模型列表】官方 2026-09-10 发布 DeepSeek-V4.1 Flash，并更改 API 模型名：
+    //   - flash 系列统一为新名 `deepseek-flash`（DeepSeek-V4.1-Flash，552B MoE、原生多模态）；
+    //     旧名 `deepseek-v4-flash` 与 `deepseek-v4-flash-vision-exp` 对应的模型已下线，
+    //     仅为兼容暂时路由到 V4.1 Flash，按 Flash 单价计费 ⇒ 三者在计费上同一档，
+    //     故本表只保留 `deepseek-flash` 一行（不再单列旧名，避免展示已下线模型）。
+    //   - `deepseek-v4-pro`（DeepSeek-V4-Pro-0813）继续提供、计费方式不变：官方更新日志
+    //     2026-09-10 条目「决定在 2026-09-14 之后继续提供 V4 Pro 的 API 调用服务」；
+    //     news260910 原文「9-14 12:00 后路由到 V4.1 Flash」的下线口径已被更新日志覆盖（作废）。
+    //   来源：官方新闻 https://api-docs.deepseek.com/zh-cn/news/news260910、
+    //     官方更新日志 https://api-docs.deepseek.com/zh-cn/updates（均为一手官方页面，2026-09-18 复核）。
+    // 【价格】18 个数值自 2026-09-10 12:00 调价后未再变动（2026-09-18 复核官方定价页逐项一致）：
+    //   flash 空闲 0.02/1/4、高峰 0.04/2/8（高峰 = 空闲 ×2）；pro 空闲 0.15/4.5/13.5、高峰 0.3/9/27。
+    //   调价依据公告逐字转载（含平台公告截图）：
+    //   https://www.dzwww.com/news/yw/202609/t20260909_18097412.htm 、
+    //   https://m.ithome.com/html/1000692.htm （官方 API 用户通知邮件截图）。
+    //   官方定价页 https://api-docs.deepseek.com/zh-cn/quick_start/pricing 已同步该价，并与本表逐项一致。
+    // 时段（依据官方定价页脚注）：高峰 = 北京时间周一至周五 9:00-12:00、14:00-18:00，
+    //   其余（含周末全天）为空闲；周末执行低谷价的规则见 2026-08-23 官方公告，渲染端已按此实现。
     // 与 public/docs/deepseek.md 的「价格峰谷」表同步维护（官方调价时两处一起改）。
     peak: {
       windows: [
@@ -53,16 +59,13 @@ export const providers: ProviderDef[] = [
       tz: "北京时间",
       currency: "CNY",
       models: {
-        "deepseek-v4-flash": {
+        // 官方现行模型名（DeepSeek-V4.1-Flash）。旧名 deepseek-v4-flash /
+        // deepseek-v4-flash-vision-exp 已下线并路由到本模型，同价，故不单列。
+        "deepseek-flash": {
           offPeak: { cacheHit: 0.02, cacheMiss: 1, output: 4 },
           peak: { cacheHit: 0.04, cacheMiss: 2, output: 8 },
         },
-        // deepseek-v4-flash-vision-exp：属 flash 系列（公告口径），与 deepseek-v4-flash 同标准同价。
-        // 结构证据（在售且与 flash 同价）来自官方定价页与 news260821；新价那一侧同属公告口径。
-        "deepseek-v4-flash-vision-exp": {
-          offPeak: { cacheHit: 0.02, cacheMiss: 1, output: 4 },
-          peak: { cacheHit: 0.04, cacheMiss: 2, output: 8 },
-        },
+        // DeepSeek-V4-Pro-0813：官方已确认 2026-09-14 之后继续提供、计费方式不变。
         "deepseek-v4-pro": {
           offPeak: { cacheHit: 0.15, cacheMiss: 4.5, output: 13.5 },
           peak: { cacheHit: 0.3, cacheMiss: 9.0, output: 27.0 },

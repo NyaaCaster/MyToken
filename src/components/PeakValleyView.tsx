@@ -10,6 +10,16 @@
  */
 import type { ProviderPeak } from "../types/provider";
 
+/**
+ * 模型行展示名（`peak.models` 的键 → 表格里显示的名字）。
+ * 不靠字符串裁剪硬推：官方改模型名时（如 2026-09-10 `deepseek-v4-flash` → `deepseek-flash`）
+ * 只改这张表，名称相关逻辑不会跟着串味。
+ */
+const MODEL_LABELS: Record<string, string> = {
+  "deepseek-flash": "flash（V4.1 Flash）",
+  "deepseek-v4-pro": "pro（V4 Pro）",
+};
+
 function isPeakHour(hour: number, windows: ProviderPeak["windows"]): boolean {
   return windows.some((w) => {
     const { start, end } = w;
@@ -108,8 +118,10 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
       {/* 价格来源与时效披露（用户可见；与 public/docs/deepseek.md 同口径） */}
       <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
         价格来源：DeepSeek 开放平台 2026-09-09 调价公告（北京时间 2026-09-10 12:00 生效）；
-        官方定价页已于 2026-09-12 复核同步（空闲价 = 高峰价的一半；高峰仅限工作日
-        9:00-12:00、14:00-18:00，周末全天空闲）。
+        官方定价页已于 2026-09-18 复核同步（空闲价 = 高峰价的一半；高峰仅限工作日
+        9:00-12:00、14:00-18:00，周末全天空闲）。模型名以官方现行口径为准：
+        flash 行为 <code>deepseek-flash</code>（DeepSeek-V4.1-Flash；旧名
+        <code>deepseek-v4-flash</code> / <code>deepseek-v4-flash-vision-exp</code> 已下线并路由至此，同价）。
       </p>
 
       {/* 各模型 两档价，每模型一行；三列各显「空闲 | 峰」，按当前相位着色 */}
@@ -130,7 +142,7 @@ export function PeakValleyView({ peak }: { peak: ProviderPeak }) {
               return (
                 <tr key={id} className="border-t border-gray-100 dark:border-white/5">
                   <td className="px-2 py-1.5 font-medium">
-                    {id.replace(/^deepseek-/, "").replace(/^v4-/, "")}
+                    {MODEL_LABELS[id] ?? id.replace(/^deepseek-/, "").replace(/^v4-/, "")}
                   </td>
                   <TierCell off={m.offPeak.cacheHit} pk={m.peak.cacheHit} inPeak={inPeak} currency={currency} />
                   <TierCell off={m.offPeak.cacheMiss} pk={m.peak.cacheMiss} inPeak={inPeak} currency={currency} />
